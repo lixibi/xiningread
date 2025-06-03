@@ -62,6 +62,7 @@ docker-compose logs -f
 
 - **触发条件**：推送到主分支或创建版本标签（v*.*.*)
 - **镜像仓库**：GitHub Container Registry (GHCR)
+- **多平台支持**：同时支持 x86_64 (AMD64) 和 ARM64 架构
 - **使用方法**：`docker pull ghcr.io/用户名/xiningread:标签`
 
 详细说明请查看 [GitHub Actions 指南](docs/github-actions-guide.md)
