@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}本地文件阅读 · 希宁阅读{% endblock %}
+
+{% block navigation %}
+<nav class="breadcrumb">
+    <a href="{{ url_for('index') }}" class="nav-link">🏠 首页</a>
+    <a href="{{ url_for('local_reader') }}" class="nav-link current">📱 查看本地书</a>
+</nav>
+{% endblock %}
+
+{% block head %}
+<style>
+.upload-area {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    margin: 20px 0;
+    background-color: #f9f9f9;
+    transition: all 0.3s ease;
+}
+
+.upload-area:hover {
+    border-color: #007bff;
+    background-color: #f0f8ff;
+}
+
+.upload-area.dragover {
+    border-color: #007bff;
+    background-color: #e6f3ff;
+}
+
+.file-input {
+    display: none;
+}
+
+.upload-btn {
+    background-color: #007bff;
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    margin: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.upload-btn:hover {
+    background-color: #0056b3;
+}
+
+.file-info {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #e9ecef;
+    border-radius: 6px;
+    display: none;
+}
+
+.supported-formats {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    border-left: 4px solid #007bff;
+}
+
+.format-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.format-tag {
+    background-color: #007bff;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.read-btn {
+    background-color: #28a745;
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    margin: 10px;
+    display: none;
+}
+
+.read-btn:hover {
+    background-color: #218838;
+}
+
+.error-message {
+    color: #dc3545;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    padding: 10px;
+    border-radius: 6px;
+    margin: 10px 0;
+    display: none;
+}
+
+.success-message {
+    color: #155724;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    padding: 10px;
+    border-radius: 6px;
+    margin: 10px 0;
+    display: none;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="local-reader-container">
+    <h2>📱 本地文件阅读</h2>
+    <p>选择您设备上的文件进行阅读，支持多种格式的文档。</p>
+    
+    <div class="upload-area" id="uploadArea">
+        <div class="upload-content">
+            <h3>📁 选择或拖拽文件到此处</h3>
+            <p>点击下方按钮选择文件，或直接将文件拖拽到此区域</p>
+            <button type="button" class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                📂 选择文件
+            </button>
+            <input type="file" id="fileInput" class="file-input" accept=".txt,.md,.pdf,.epub,.html,.htm,.py,.js,.css,.json,.xml,.csv,.log,.java,.cpp,.c,.h,.php,.rb,.go,.rs,.swift,.kt,.scala,.sh,.bat,.ps1,.sql,.yaml,.yml">
+        </div>
+    </div>
+    
+    <div class="error-message" id="errorMessage"></div>
+    <div class="success-message" id="successMessage"></div>
+    
+    <div class="file-info" id="fileInfo">
+        <h4>📄 文件信息</h4>
+        <p><strong>文件名：</strong><span id="fileName"></span></p>
+        <p><strong>文件大小：</strong><span id="fileSize"></span></p>
+        <p><strong>文件类型：</strong><span id="fileType"></span></p>
+        <button type="button" class="read-btn" id="readBtn">📖 开始阅读</button>
+    </div>
+    
+    <div class="supported-formats">
+        <h4>🎯 支持的文件格式</h4>
+        <p>本应用支持以下文件格式的在线阅读：</p>
+        <div class="format-list">
+            <span class="format-tag">TXT</span>
+            <span class="format-tag">MD</span>
+            <span class="format-tag">PDF</span>
+            <span class="format-tag">EPUB</span>
+            <span class="format-tag">HTML</span>
+            <span class="format-tag">PY</span>
+            <span class="format-tag">JS</span>
+            <span class="format-tag">CSS</span>
+            <span class="format-tag">JSON</span>
+            <span class="format-tag">XML</span>
+            <span class="format-tag">CSV</span>
+            <span class="format-tag">LOG</span>
+        </div>
+        <p style="margin-top: 10px; font-size: 14px; color: #666;">
+            以及更多编程语言文件：Java, C/C++, PHP, Ruby, Go, Rust, Swift, Kotlin, Scala, Shell脚本等
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedFile = null;
+
+// 文件输入变化处理
+document.getElementById('fileInput').addEventListener('change', function(e) {
+    handleFileSelect(e.target.files[0]);
+});
+
+// 拖拽处理
+const uploadArea = document.getElementById('uploadArea');
+
+uploadArea.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', function(e) {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        handleFileSelect(files[0]);
+    }
+});
+
+// 处理文件选择
+function handleFileSelect(file) {
+    if (!file) return;
+    
+    selectedFile = file;
+    
+    // 显示文件信息
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = formatFileSize(file.size);
+    document.getElementById('fileType').textContent = getFileTypeLabel(file.name);
+    
+    document.getElementById('fileInfo').style.display = 'block';
+    document.getElementById('readBtn').style.display = 'inline-block';
+    
+    // 隐藏错误信息
+    document.getElementById('errorMessage').style.display = 'none';
+    
+    // 显示成功信息
+    const successMsg = document.getElementById('successMessage');
+    successMsg.textContent = '✅ 文件选择成功！点击"开始阅读"按钮开始阅读。';
+    successMsg.style.display = 'block';
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// 获取文件类型标签
+function getFileTypeLabel(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const typeMap = {
+        'txt': 'TXT', 'md': 'MD', 'pdf': 'PDF', 'epub': 'EPUB',
+        'html': 'HTML', 'htm': 'HTML', 'py': 'PY', 'js': 'JS',
+        'css': 'CSS', 'json': 'JSON', 'xml': 'XML', 'csv': 'CSV',
+        'log': 'LOG', 'java': 'JAVA', 'cpp': 'C++', 'c': 'C',
+        'h': 'H', 'php': 'PHP', 'rb': 'RUBY', 'go': 'GO',
+        'rs': 'RUST', 'swift': 'SWIFT', 'kt': 'KOTLIN',
+        'scala': 'SCALA', 'sh': 'BASH', 'bat': 'BAT',
+        'ps1': 'PS1', 'sql': 'SQL', 'yaml': 'YAML', 'yml': 'YAML'
+    };
+    return typeMap[ext] || ext.toUpperCase();
+}
+
+// 开始阅读按钮处理
+document.getElementById('readBtn').addEventListener('click', function() {
+    if (!selectedFile) {
+        showError('请先选择一个文件');
+        return;
+    }
+    
+    // 创建FormData对象
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    
+    // 显示加载状态
+    this.textContent = '📤 上传中...';
+    this.disabled = true;
+    
+    // 上传文件
+    fetch('/upload_local_file', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 跳转到阅读页面
+            window.location.href = data.read_url;
+        } else {
+            showError(data.error || '文件上传失败');
+            this.textContent = '📖 开始阅读';
+            this.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('网络错误，请重试');
+        this.textContent = '📖 开始阅读';
+        this.disabled = false;
+    });
+});
+
+// 显示错误信息
+function showError(message) {
+    const errorMsg = document.getElementById('errorMessage');
+    errorMsg.textContent = '❌ ' + message;
+    errorMsg.style.display = 'block';
+    
+    // 隐藏成功信息
+    document.getElementById('successMessage').style.display = 'none';
+}
+</script>
+{% endblock %}

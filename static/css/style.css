@@ -1,0 +1,939 @@
+/* 墨水屏优化样式 - 高对比度、简洁设计 */
+
+/* 自定义字体定义 */
+@font-face {
+    font-family: 'CustomFont';
+    src: url('/static/font/font.ttf') format('truetype');
+    font-display: swap;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Times New Roman', 'SimSun', serif;
+    font-size: 18px;
+    line-height: 1.6;
+    color: #000;
+    background-color: #fff;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* 自定义字体模式 */
+body.custom-font {
+    font-family: 'CustomFont', 'Times New Roman', 'SimSun', serif !important;
+}
+
+body.custom-font .file-content,
+body.custom-font .markdown-content,
+body.custom-font .txt-content,
+body.custom-font .epub-content,
+body.custom-font .html-viewer,
+body.custom-font .content-area,
+body.custom-font p,
+body.custom-font div,
+body.custom-font span,
+body.custom-font h1,
+body.custom-font h2,
+body.custom-font h3,
+body.custom-font h4,
+body.custom-font h5,
+body.custom-font h6 {
+    font-family: 'CustomFont', 'Times New Roman', 'SimSun', serif !important;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 头部样式 */
+.header {
+    border-bottom: 3px solid #000;
+    padding-bottom: 15px;
+    margin-bottom: 25px;
+}
+
+.header h1 {
+    font-size: 28px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+/* 导航样式 */
+.breadcrumb, .reader-nav {
+    font-size: 16px;
+    text-align: center;
+    padding: 10px 0;
+}
+
+.nav-link {
+    color: #000;
+    text-decoration: none;
+    padding: 5px 10px;
+    border: 2px solid #000;
+    margin: 0 5px;
+    display: inline-block;
+    background-color: #fff;
+}
+
+.nav-link:hover {
+    background-color: #000;
+    color: #fff;
+}
+
+.separator {
+    margin: 0 10px;
+    font-weight: bold;
+}
+
+.current-folder, .current-file {
+    font-weight: bold;
+    padding: 5px 10px;
+    background-color: #000;
+    color: #fff;
+}
+
+/* 主内容区域 */
+.main-content {
+    flex: 1;
+    padding: 20px 0;
+}
+
+/* 文件浏览器样式 */
+.file-browser {
+    margin-bottom: 30px;
+}
+
+.file-item {
+    border: 2px solid #000;
+    margin-bottom: 10px;
+    padding: 15px;
+    background-color: #fff;
+}
+
+.file-item.directory {
+    background-color: #f8f8f8;
+}
+
+.file-link {
+    color: #000;
+    text-decoration: none;
+    display: block;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.file-link:hover {
+    background-color: #000;
+    color: #fff;
+    padding: 5px;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.file-icon {
+    font-size: 24px;
+    margin-right: 15px;
+    width: 30px;
+    text-align: center;
+}
+
+.file-name {
+    flex: 1;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.file-type-label {
+    font-size: 10px;
+    font-weight: bold;
+    background-color: #000;
+    color: #fff;
+    padding: 2px 6px;
+    margin: 0 10px;
+    border-radius: 3px;
+    min-width: 30px;
+    text-align: center;
+    display: inline-block;
+}
+
+.file-size {
+    font-size: 14px;
+    color: #666;
+    margin-left: 15px;
+}
+
+.file-actions {
+    text-align: right;
+}
+
+/* 按钮样式 */
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    margin: 0 5px;
+    border: 2px solid #000;
+    background-color: #fff;
+    color: #000;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background-color: #000;
+    color: #fff;
+}
+
+.btn-primary {
+    background-color: #000;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background-color: #fff;
+    color: #000;
+}
+
+.btn-secondary {
+    background-color: #fff;
+    color: #000;
+}
+
+.btn-control {
+    font-size: 12px;
+    padding: 6px 12px;
+    margin: 2px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+
+
+/* 空文件夹样式 */
+.empty-folder {
+    text-align: center;
+    padding: 50px;
+    border: 2px dashed #000;
+    font-size: 20px;
+}
+
+/* 统计信息 */
+.stats {
+    text-align: center;
+    font-size: 16px;
+    padding: 15px;
+    border-top: 2px solid #000;
+    background-color: #f8f8f8;
+}
+
+/* 阅读器样式 */
+.reader-container {
+    max-width: 100%;
+}
+
+.reader-controls {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 2px solid #000;
+    background-color: #f8f8f8;
+    transition: none;
+    min-width: 0;
+}
+
+.reader-controls.collapsed {
+    padding: 5px 15px;
+    overflow: hidden;
+}
+
+.reader-controls.collapsed .control-buttons {
+    display: none;
+}
+
+.control-toggle {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.control-buttons {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 5px;
+    white-space: nowrap;
+    overflow-x: auto;
+    align-items: center;
+}
+
+.reading-area {
+    padding: 40px;
+    margin-bottom: 20px;
+    background-color: #fff;
+    min-height: 400px;
+}
+
+.file-content {
+    font-family: 'Times New Roman', 'SimSun', serif;
+    font-size: 18px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: #000;
+    background-color: #fff;
+    border: none;
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    display: block;
+}
+
+/* Markdown内容样式 - 专门针对墨水屏和中文阅读优化 */
+.markdown-content {
+    font-family: 'Times New Roman', 'SimSun', serif;
+    font-size: 18px;
+    line-height: 1.8;
+    color: #000;
+    background-color: #fff;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+/* 标题样式 - 突出显示 */
+.markdown-content h1 {
+    font-size: 32px;
+    font-weight: bold;
+    text-align: center;
+    margin: 40px 0 30px 0;
+    padding: 20px 0;
+    border-top: 4px solid #000;
+    border-bottom: 4px solid #000;
+    background-color: #000;
+    color: #fff;
+}
+
+.markdown-content h2 {
+    font-size: 26px;
+    font-weight: bold;
+    margin: 35px 0 25px 0;
+    padding: 15px 0;
+    border-bottom: 3px solid #000;
+    background-color: #f8f8f8;
+}
+
+.markdown-content h3 {
+    font-size: 22px;
+    font-weight: bold;
+    margin: 30px 0 20px 0;
+    padding: 10px 0;
+    border-left: 6px solid #000;
+    padding-left: 15px;
+    background-color: #f8f8f8;
+}
+
+.markdown-content h4 {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 25px 0 15px 0;
+    padding: 8px 0;
+    border-bottom: 2px solid #000;
+}
+
+.markdown-content h5, .markdown-content h6 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 20px 0 10px 0;
+}
+
+/* 段落样式 - 中文优化 */
+.markdown-content p {
+    margin: 20px 0;
+    text-align: justify;
+    text-indent: 2em; /* 中文段落首行缩进2字符 */
+    line-height: 2.0;
+}
+
+/* 列表样式 */
+.markdown-content ul, .markdown-content ol {
+    margin: 20px 0;
+    padding-left: 40px;
+}
+
+.markdown-content li {
+    margin: 10px 0;
+    line-height: 1.8;
+}
+
+/* 引用样式 */
+.markdown-content blockquote {
+    margin: 25px 0;
+    padding: 20px;
+    border-left: 6px solid #000;
+    background-color: #f8f8f8;
+    font-style: italic;
+}
+
+.markdown-content blockquote p {
+    text-indent: 0; /* 引用内容不缩进 */
+    margin: 10px 0;
+}
+
+/* 代码样式 */
+.markdown-content code {
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    background-color: #f8f8f8;
+    padding: 2px 6px;
+    border: 1px solid #000;
+}
+
+.markdown-content pre {
+    margin: 20px 0;
+    padding: 20px;
+    background-color: #f8f8f8;
+    border: 2px solid #000;
+    overflow-x: auto;
+}
+
+.markdown-content pre code {
+    background-color: transparent;
+    padding: 0;
+    border: none;
+}
+
+/* 表格样式 */
+.markdown-content table {
+    width: 100%;
+    margin: 25px auto;
+    border-collapse: collapse;
+    border: 2px solid #000;
+    font-family: 'Times New Roman', 'SimSun', serif;
+    font-size: 16px;
+}
+
+.markdown-content thead th {
+    padding: 12px;
+    text-align: left;
+    border: 1px solid #000;
+    background-color: #000;
+    color: #fff;
+    font-weight: bold;
+}
+
+.markdown-content tbody td {
+    padding: 12px;
+    text-align: left;
+    border: 1px solid #000;
+    background-color: #fff;
+}
+
+.markdown-content tbody tr:nth-child(even) td {
+    background-color: #f8f8f8;
+}
+
+/* 确保表格在容器内正确显示 */
+.markdown-content .table-wrapper {
+    overflow-x: auto;
+    margin: 25px 0;
+}
+
+.markdown-content .table-wrapper table {
+    margin: 0;
+}
+
+/* 分割线 */
+.markdown-content hr {
+    margin: 40px 0;
+    border: none;
+    border-top: 3px solid #000;
+}
+
+/* 链接样式 */
+.markdown-content a {
+    color: #000;
+    text-decoration: underline;
+    font-weight: bold;
+}
+
+.markdown-content a:hover {
+    background-color: #000;
+    color: #fff;
+    padding: 2px 4px;
+}
+
+/* 代码文件样式 */
+.code-content {
+    font-family: 'Courier New', monospace;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.code-header {
+    background-color: #000;
+    color: #fff;
+    padding: 10px 15px;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.language-label {
+    background-color: #fff;
+    color: #000;
+    padding: 2px 8px;
+    font-size: 12px;
+}
+
+.code-block {
+    background-color: #f8f8f8;
+    border: 2px solid #000;
+    border-top: none;
+    padding: 20px;
+    overflow-x: auto;
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.code-block code {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    font-family: 'Courier New', monospace;
+}
+
+/* TXT文件样式 */
+.txt-content {
+    font-family: 'Times New Roman', 'SimSun', serif;
+    font-size: 18px;
+    line-height: 2.0;
+    color: #000;
+    background-color: #fff;
+    max-width: 800px;
+    margin: 0 auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* PDF阅读器样式 */
+.pdf-reader-container {
+    max-width: 100%;
+}
+
+.pdf-controls {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 2px solid #000;
+    background-color: #f8f8f8;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pdf-info {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.pdf-viewer {
+    border: 2px solid #000;
+    background-color: #fff;
+}
+
+/* EPUB阅读器样式 */
+.epub-reader-container {
+    max-width: 100%;
+}
+
+.epub-controls {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 2px solid #000;
+    background-color: #f8f8f8;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.epub-info {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.epub-viewer {
+    background-color: #fff;
+    padding: 40px;
+}
+
+.epub-notice {
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.epub-notice h3 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #000;
+}
+
+.epub-notice ul {
+    text-align: left;
+    margin: 20px 0;
+}
+
+.epub-notice li {
+    margin: 10px 0;
+    line-height: 1.6;
+}
+
+.epub-actions {
+    margin: 30px 0;
+}
+
+.epub-info-details {
+    margin-top: 40px;
+    padding: 20px;
+    border: 2px solid #000;
+    background-color: #f8f8f8;
+    text-align: left;
+}
+
+.epub-info-details h4 {
+    font-size: 18px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 5px;
+}
+
+.epub-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    border-bottom: 3px solid #000;
+}
+
+.epub-title {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #000;
+}
+
+.epub-author {
+    font-size: 18px;
+    color: #666;
+    font-style: italic;
+}
+
+.epub-content {
+    font-family: 'Times New Roman', 'SimSun', serif;
+    font-size: 18px;
+    line-height: 1.8;
+    color: #000;
+    background-color: #fff;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.epub-error {
+    text-align: center;
+    padding: 40px;
+    border: 2px solid #000;
+    background-color: #f8f8f8;
+}
+
+.epub-error h3 {
+    color: #000;
+    margin-bottom: 20px;
+}
+
+/* HTML阅读器样式 */
+.html-reader-container {
+    max-width: 100%;
+}
+
+.html-controls {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 2px solid #000;
+    background-color: #f8f8f8;
+}
+
+.html-viewer {
+    padding: 20px;
+    background-color: #fff;
+    min-height: 400px;
+    font-family: 'Times New Roman', 'SimSun', serif;
+    font-size: 18px;
+    line-height: 1.8;
+    color: #000;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* 竖直进度条 - 左下角 */
+.reading-progress {
+    position: fixed;
+    left: 15px;
+    bottom: 20px;
+    z-index: 9997;
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.progress-bar {
+    width: 8px;
+    height: 120px;
+    border: 2px solid #000;
+    background-color: #fff;
+    position: relative;
+}
+
+.progress-fill {
+    width: 100%;
+    background-color: #000;
+    position: absolute;
+    bottom: 0;
+    height: 0%;
+    transition: none; /* 墨水屏不需要动画 */
+}
+
+.progress-info {
+    font-size: 12px;
+    font-weight: bold;
+    color: #000;
+    transform: rotate(-90deg);
+    transform-origin: center;
+    white-space: nowrap;
+}
+
+/* 隐藏原来的水平进度条 */
+.reading-progress.horizontal {
+    display: none;
+}
+
+/* 全屏模式样式 */
+.fullscreen-mode {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #fff;
+    z-index: 9999;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.fullscreen-mode .reader-controls {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    background-color: rgba(248, 248, 248, 0.95);
+    border: 2px solid #000;
+    border-radius: 0;
+}
+
+.fullscreen-mode .reading-area {
+    margin-top: 80px;
+    border: none;
+    padding: 60px 40px;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.fullscreen-mode .reading-progress {
+    left: 20px;
+    bottom: 20px;
+}
+
+/* 浮动翻页按钮 - 简洁设计 */
+.page-navigation {
+    position: fixed;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 9998;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    cursor: move; /* 可拖动 */
+}
+
+.page-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: none;
+    border-radius: 50%;
+}
+
+.page-btn:hover {
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+.page-btn:active {
+    transform: scale(0.9);
+}
+
+.bookmark-btn {
+    background-color: rgba(128, 128, 128, 0.4) !important;
+    color: #000 !important;
+    font-weight: bold;
+}
+
+.bookmark-btn:hover {
+    background-color: rgba(128, 128, 128, 0.6) !important;
+}
+
+/* 全屏模式下的翻页按钮 */
+.fullscreen-mode .page-navigation {
+    right: 10px;
+    z-index: 10001;
+}
+
+/* 底部样式 */
+.footer {
+    border-top: 3px solid #000;
+    padding-top: 15px;
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+    margin-top: 30px;
+}
+
+/* 隐藏全屏模式下的页面其他元素 */
+.fullscreen-mode .header,
+.fullscreen-mode .footer {
+    display: none;
+}
+
+/* 错误页面样式 */
+.error-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+    padding: 40px 20px;
+}
+
+.error-content {
+    text-align: center;
+    max-width: 600px;
+    border: 3px solid #000;
+    padding: 40px;
+    background-color: #f8f8f8;
+}
+
+.error-code {
+    font-size: 72px;
+    font-weight: bold;
+    color: #000;
+    margin-bottom: 20px;
+    line-height: 1;
+}
+
+.error-message {
+    font-size: 24px;
+    font-weight: bold;
+    color: #000;
+    margin-bottom: 30px;
+}
+
+.error-description {
+    text-align: left;
+    margin-bottom: 30px;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.error-description ul {
+    margin: 15px 0;
+    padding-left: 30px;
+}
+
+.error-description li {
+    margin: 8px 0;
+}
+
+.error-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.error-actions .btn {
+    min-width: 120px;
+}
+
+/* 响应式设计 - 适配10寸屏幕 */
+@media screen and (max-width: 1024px) {
+    .container {
+        padding: 15px;
+    }
+    
+    .file-content {
+        font-size: 16px;
+        padding: 20px;
+    }
+    
+    .btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .file-info {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .file-actions {
+        text-align: left;
+        margin-top: 10px;
+    }
+    
+    .file-size {
+        margin-left: 0;
+        margin-top: 5px;
+    }
+}

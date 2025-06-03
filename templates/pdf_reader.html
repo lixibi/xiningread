@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}{{ filename }} - 希宁阅读{% endblock %}
+
+{% block navigation %}
+<nav class="reader-nav">
+    <a href="{{ url_for('index') }}" class="nav-link">🏠 返回文件列表</a>
+    <span class="separator">|</span>
+    <span class="current-file">📄 {{ filename }}</span>
+    <span class="separator">|</span>
+    <a href="{{ url_for('download_file', path=file_path) }}" class="nav-link">⬇️ 下载</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="pdf-reader-container">
+    <div class="pdf-controls">
+        <button id="pdf-fullscreen" class="btn btn-control">🔳 浏览器全屏</button>
+        <span class="pdf-info">PDF文件：{{ filename }}</span>
+    </div>
+    
+    <div class="pdf-viewer">
+        <iframe
+            src="{{ url_for('view_file', path=file_path) }}"
+            width="100%"
+            height="800px"
+            style="border: 2px solid #000;">
+            <p>您的浏览器不支持PDF预览。<a href="{{ url_for('download_file', path=file_path) }}">点击下载PDF文件</a></p>
+        </iframe>
+    </div>
+</div>
+
+<!-- 浮动翻页按钮 -->
+<div class="page-navigation" id="page-navigation">
+    <button id="page-up" class="page-btn page-up" title="上一页 (Page Up)">▲</button>
+    <button id="page-down" class="page-btn page-down" title="下一页 (Page Down)">▼</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fullscreenBtn = document.getElementById('pdf-fullscreen');
+    
+    // 浏览器全屏功能
+    fullscreenBtn.addEventListener('click', function() {
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        } else {
+            document.documentElement.requestFullscreen();
+        }
+    });
+    
+    // 监听全屏状态变化
+    document.addEventListener('fullscreenchange', function() {
+        if (document.fullscreenElement) {
+            fullscreenBtn.textContent = '🔲 退出全屏';
+        } else {
+            fullscreenBtn.textContent = '🔳 浏览器全屏';
+        }
+    });
+    
+    // 翻页功能（对于PDF可能需要特殊处理）
+    const pageUpBtn = document.getElementById('page-up');
+    const pageDownBtn = document.getElementById('page-down');
+    const pageHeight = window.innerHeight * 0.8;
+    
+    pageUpBtn.addEventListener('click', function() {
+        window.scrollBy({
+            top: -pageHeight,
+            behavior: 'auto'
+        });
+    });
+    
+    pageDownBtn.addEventListener('click', function() {
+        window.scrollBy({
+            top: pageHeight,
+            behavior: 'auto'
+        });
+    });
+    
+    // 键盘快捷键
+    document.addEventListener('keydown', function(e) {
+        switch(e.key) {
+            case 'PageUp':
+            case 'ArrowUp':
+            case 'ArrowLeft':
+                e.preventDefault();
+                pageUpBtn.click();
+                break;
+            case 'PageDown':
+            case 'ArrowDown':
+            case 'ArrowRight':
+                e.preventDefault();
+                pageDownBtn.click();
+                break;
+        }
+    });
+});
+</script>
+{% endblock %}

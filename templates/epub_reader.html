@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}{{ filename }} - 希宁阅读{% endblock %}
+
+{% block navigation %}
+<nav class="reader-nav">
+    <a href="{{ url_for('index') }}" class="nav-link">🏠 返回文件列表</a>
+    <span class="separator">|</span>
+    <span class="current-file">📚 {{ filename }}</span>
+    <span class="separator">|</span>
+    <a href="{{ url_for('download_file', path=file_path) }}" class="nav-link">⬇️ 下载</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="epub-reader-container">
+    <div class="epub-controls">
+        <button class="control-toggle" id="control-toggle">⚙️ 阅读设置</button>
+        <div class="control-buttons" id="control-buttons">
+            <button id="font-smaller" class="btn btn-control">🔤- 缩小字体</button>
+            <button id="font-larger" class="btn btn-control">🔤+ 放大字体</button>
+            <button id="fullscreen-browser" class="btn btn-control">🔳 浏览器全屏</button>
+            <button id="bookmark-btn" class="btn btn-control">🔖 书签</button>
+        </div>
+    </div>
+
+    <div class="epub-viewer">
+        {% if epub_data %}
+            <div class="epub-header">
+                <h1 class="epub-title">{{ epub_data.title }}</h1>
+                <p class="epub-author">作者：{{ epub_data.author }}</p>
+            </div>
+
+            <div class="epub-content" id="epub-content">
+                {{ epub_data.content|safe }}
+            </div>
+        {% elif error %}
+            <div class="epub-error">
+                <h3>❌ EPUB解析失败</h3>
+                <p>{{ error }}</p>
+                <div class="epub-actions">
+                    <a href="{{ url_for('download_file', path=file_path) }}" class="btn btn-primary">
+                        📥 下载EPUB文件
+                    </a>
+                </div>
+            </div>
+        {% else %}
+            <div class="epub-notice">
+                <h3>📚 EPUB电子书阅读</h3>
+                <p>EPUB文件需要专门的阅读器来显示。您可以：</p>
+                <ul>
+                    <li><strong>下载文件</strong>：使用专业的EPUB阅读器（如Adobe Digital Editions、Calibre等）</li>
+                    <li><strong>在线阅读</strong>：将文件上传到在线EPUB阅读器</li>
+                    <li><strong>转换格式</strong>：使用Calibre等工具转换为PDF或其他格式</li>
+                </ul>
+
+                <div class="epub-actions">
+                    <a href="{{ url_for('download_file', path=file_path) }}" class="btn btn-primary">
+                        📥 下载EPUB文件
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- 竖直进度条 -->
+    <div class="reading-progress" id="reading-progress">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="progress-info">
+            <span id="progress-text">0%</span>
+        </div>
+    </div>
+</div>
+
+<!-- 浮动翻页按钮 -->
+<div class="page-navigation" id="page-navigation">
+    <button id="page-up" class="page-btn page-up" title="上一页 (Page Up)">▲</button>
+    <button id="page-down" class="page-btn page-down" title="下一页 (Page Down)">▼</button>
+    <button id="bookmark-save" class="page-btn bookmark-btn" title="保存书签">💾</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/reader.js') }}"></script>
+<script>
+// EPUB特定的样式调整
+document.addEventListener('DOMContentLoaded', function() {
+    const epubContent = document.getElementById('epub-content');
+
+    // 为EPUB内容添加墨水屏优化样式
+    if (epubContent) {
+        epubContent.style.fontFamily = "'Times New Roman', 'SimSun', serif";
+        epubContent.style.lineHeight = "1.8";
+        epubContent.style.color = "#000";
+        epubContent.style.backgroundColor = "#fff";
+        epubContent.style.maxWidth = "800px";
+        epubContent.style.margin = "0 auto";
+        epubContent.style.padding = "20px";
+
+        // 调整EPUB内容中的样式以适配墨水屏
+        const allElements = epubContent.querySelectorAll('*');
+        allElements.forEach(element => {
+            // 移除可能的彩色背景
+            const computedStyle = window.getComputedStyle(element);
+            if (computedStyle.backgroundColor && computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' && computedStyle.backgroundColor !== 'transparent') {
+                element.style.backgroundColor = '#f8f8f8';
+            }
+
+            // 确保文字颜色为黑色
+            if (computedStyle.color && computedStyle.color !== 'rgb(0, 0, 0)') {
+                element.style.color = '#000';
+            }
+
+            // 处理段落缩进
+            if (element.tagName === 'P') {
+                element.style.textIndent = '2em';
+                element.style.margin = '1em 0';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

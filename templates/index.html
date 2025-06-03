@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}希宁阅读 · 一页知星海{% endblock %}
+
+{% block navigation %}
+<nav class="breadcrumb">
+    <a href="{{ url_for('index') }}" class="nav-link">🏠 首页</a>
+    <a href="{{ url_for('local_reader') }}" class="nav-link">📱 查看本地书</a>
+    {% if current_path %}
+        {% set path_parts = current_path.split('/') %}
+        {% for part in path_parts %}
+            {% if not loop.last %}
+                <span class="separator">></span>
+                <a href="{{ url_for('index', path='/'.join(path_parts[:loop.index])) }}" class="nav-link">{{ part }}</a>
+            {% else %}
+                <span class="separator">></span>
+                <span class="current-folder">{{ part }}</span>
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="file-browser">
+    {% if parent_path is not none %}
+    <div class="file-item directory">
+        <a href="{{ url_for('index', path=parent_path) }}" class="file-link">
+            <span class="file-icon">📁</span>
+            <span class="file-name">.. (返回上级)</span>
+        </a>
+    </div>
+    {% endif %}
+    
+    {% for directory in directories %}
+    <div class="file-item directory">
+        <a href="{{ url_for('index', path=directory.path) }}" class="file-link">
+            <span class="file-icon">📁</span>
+            <span class="file-name">{{ directory.name }}</span>
+        </a>
+    </div>
+    {% endfor %}
+    
+    {% for file in files %}
+    <div class="file-item file">
+        <div class="file-info">
+            <span class="file-icon">
+                {% if file.is_text %}📄{% else %}📎{% endif %}
+            </span>
+            <span class="file-name">{{ file.name }}</span>
+            <span class="file-type-label">{{ file.type_label }}</span>
+            <span class="file-size">{{ file.size }}</span>
+        </div>
+        <div class="file-actions">
+            {% if file.is_text %}
+                <a href="{{ url_for('read_file', path=file.path) }}" class="btn btn-primary">📖 阅读</a>
+            {% else %}
+                <a href="{{ url_for('download_file', path=file.path) }}" class="btn btn-secondary">⬇️ 下载</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+    
+    {% if not directories and not files %}
+    <div class="empty-folder">
+        <p>📂 此文件夹为空</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="stats">
+    <p>
+        📁 文件夹: {{ directories|length }} 个 | 
+        📄 文件: {{ files|length }} 个
+    </p>
+</div>
+{% endblock %}

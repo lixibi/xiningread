@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}{{ filename }} - 希宁阅读{% endblock %}
+
+{% block navigation %}
+<nav class="reader-nav">
+    <a href="{{ url_for('index') }}" class="nav-link">🏠 返回文件列表</a>
+    <span class="separator">|</span>
+    <span class="current-file">📄 {{ filename }}</span>
+    <span class="separator">|</span>
+    <a href="{{ url_for('download_file', path=file_path) }}" class="nav-link">⬇️ 下载</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="reader-container" id="reader-container">
+    <div class="reader-controls" id="reader-controls">
+        <button class="control-toggle" id="control-toggle">⚙️ 阅读设置</button>
+        <div class="control-buttons" id="control-buttons">
+            <button id="font-smaller" class="btn btn-control">🔤- 缩小字体</button>
+            <button id="font-larger" class="btn btn-control">🔤+ 放大字体</button>
+            <button id="fullscreen-browser" class="btn btn-control">🔳 浏览器全屏</button>
+            <button id="bookmark-btn" class="btn btn-control">🔖 书签</button>
+        </div>
+    </div>
+
+    <div class="reading-area" id="reading-area">
+        {% if file_type == 'markdown' and html_content %}
+            <div class="markdown-content">{{ html_content|safe }}</div>
+        {% elif file_type == 'code' %}
+            <div class="code-content">
+                <div class="code-header">
+                    <span class="language-label">{{ language.upper() }}</span>
+                    <span class="filename">{{ filename }}</span>
+                </div>
+                <pre class="code-block language-{{ language }}"><code>{{ content }}</code></pre>
+            </div>
+        {% elif file_type == 'txt' %}
+            <div class="txt-content">{{ content|safe }}</div>
+        {% else %}
+            <pre class="file-content">{{ content }}</pre>
+        {% endif %}
+    </div>
+
+    <!-- 竖直进度条 -->
+    <div class="reading-progress" id="reading-progress">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="progress-info">
+            <span id="progress-text">0%</span>
+        </div>
+    </div>
+</div>
+
+<!-- 浮动翻页按钮 -->
+<div class="page-navigation" id="page-navigation">
+    <button id="page-up" class="page-btn page-up" title="上一页 (Page Up)">▲</button>
+    <button id="page-down" class="page-btn page-down" title="下一页 (Page Down)">▼</button>
+    <button id="bookmark-save" class="page-btn bookmark-btn" title="保存书签">💾</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/reader.js') }}"></script>
+{% endblock %}
