@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  ebook-reader:
+    build: .
+    container_name: ebook-reader
+    ports:
+      - "9588:9588"
+    volumes:
+      - ./filesystem:/app/filesystem
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9588/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
