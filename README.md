@@ -1,7 +1,5 @@
 # � 希宁阅读 · 一页知星海
 
-希宁阅读 (XiningRead) is a web application designed for a pleasant reading experience, especially on e-ink devices. It allows you to browse and read books stored on your server and also supports reading books uploaded directly from your local device.
-
 墨水屏优化的个人读书应用，专为10寸电子墨水屏设计，提供优雅的文件浏览和阅读体验。
 
 ## ✨ 特性
@@ -53,12 +51,6 @@ docker-compose up -d
 # 查看日志
 docker-compose logs -f
 ```
-
-### 一键运行推荐命令
-```bash
-docker run -d -p 9588:9588 -v "$(pwd)/book:/app/filesystem" ghcr.io/lixibi/xiningread:latest
-```
-**Note:** Replace `$(pwd)/book` with the actual path to your book directory on your host machine. For example, if your books are in `/my/books`, the command would be `-v "/my/books:/app/filesystem"`.
 
 ### 访问地址
 - **本地访问**：http://localhost:9588
