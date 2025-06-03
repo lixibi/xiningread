@@ -22,6 +22,11 @@
 {% endblock %}
 
 {% block content %}
+<div class="project-description">
+    <h2>欢迎使用 希宁阅读</h2>
+    <p>希宁阅读 (XiningRead) 是一款专为墨水屏优化的个人读书应用，致力于提供纯粹、舒适的阅读体验。</p>
+    <p>您当前浏览的是<strong>服务器书库</strong>中的书籍（位于 <code>filesystem</code> 目录）。您也可以通过导航栏的 “<a href='{{ url_for('local_reader') }}'>📱 查看本地书</a>” 选项来上传并阅读您设备上的书籍。</p>
+</div>
 <div class="file-browser">
     {% if parent_path is not none %}
     <div class="file-item directory">
