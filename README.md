@@ -56,6 +56,16 @@ docker-compose logs -f
 - **本地访问**：http://localhost:9588
 - **局域网访问**：http://[IP地址]:9588
 
+## 🔄 GitHub Actions 自动构建
+
+本项目已配置 GitHub Actions 工作流，可自动构建并发布 Docker 镜像：
+
+- **触发条件**：推送到主分支或创建版本标签（v*.*.*)
+- **镜像仓库**：GitHub Container Registry (GHCR)
+- **使用方法**：`docker pull ghcr.io/用户名/xiningread:标签`
+
+详细说明请查看 [GitHub Actions 指南](docs/github-actions-guide.md)
+
 ## 📦 技术栈
 
 - **后端**：Flask 2.3.3 + Python 3.11
