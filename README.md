@@ -1,4 +1,4 @@
-# � 希宁阅读 · 一页知星海
+#  希宁阅读 · 一页知星海
 
 希宁阅读 (XiningRead) is a web application designed for a pleasant reading experience, especially on e-ink devices. It allows you to browse and read books stored on your server and also supports reading books uploaded directly from your local device.
 
