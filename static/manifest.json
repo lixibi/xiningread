@@ -1,0 +1,23 @@
+{
+    "name": "希宁阅读",
+    "short_name": "希宁阅读",
+    "description": "墨水屏优化的个人读书应用",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#000000",
+    "icons": [
+        {
+            "src": "/static/font/font.ttf",
+            "sizes": "192x192",
+            "type": "font/ttf",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/static/font/font.ttf",
+            "sizes": "512x512",
+            "type": "font/ttf",
+            "purpose": "any maskable"
+        }
+    ]
+}

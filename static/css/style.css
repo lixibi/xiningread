@@ -152,11 +152,12 @@ body.custom-font h6 {
     text-align: center;
 }
 
-.file-name {
+.file-name, .file-name-display { /* Added .file-name-display */
     flex: 1;
     font-size: 18px;
     font-weight: bold;
 }
+
 
 .file-type-label {
     font-size: 10px;
@@ -179,6 +180,9 @@ body.custom-font h6 {
 
 .file-actions {
     text-align: right;
+    display: flex; /* For aligning items including new edit button */
+    align-items: center;
+    justify-content: flex-end;
 }
 
 /* 按钮样式 */
@@ -223,6 +227,18 @@ body.custom-font h6 {
     flex-shrink: 0;
 }
 
+.btn-edit-meta { /* Style for the edit metadata button */
+    background: none;
+    border: none;
+    color: #555;
+    padding: 5px 8px;
+    font-size: 1.2em;
+    margin-left: 8px;
+}
+.btn-edit-meta:hover {
+    color: #000;
+    background-color: #eee;
+}
 
 
 /* 空文件夹样式 */
@@ -288,6 +304,10 @@ body.custom-font h6 {
     margin-bottom: 20px;
     background-color: #fff;
     min-height: 400px;
+    user-select: text; /* Allow text selection for annotations */
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
 }
 
 .file-content {
@@ -1004,6 +1024,13 @@ body.dark-mode .btn-secondary { /* Assuming this is for less prominent actions *
 body.dark-mode .btn-secondary:hover {
     background-color: #5a5a5a;
 }
+body.dark-mode .btn-edit-meta {
+    color: #aaa;
+}
+body.dark-mode .btn-edit-meta:hover {
+    color: #e0e0e0;
+    background-color: #3a3a3a;
+}
 
 
 body.dark-mode .breadcrumb,
@@ -1267,3 +1294,265 @@ body.dark-mode.custom-font h6 {
 #theme-toggle-btn {
     border-radius: 5px; /* Example of specific button styling */
 }
+
+/* Favorite Button Styles */
+.btn-favorite {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px; /* Minimal padding */
+    margin-left: 8px; /* Space from previous button */
+    font-size: 1.5em; /* Larger icon */
+    color: #ccc; /* Default (unfavorited) color - light grey */
+    vertical-align: middle; /* Align with other buttons */
+    line-height: 1; /* Prevent extra spacing */
+}
+
+.btn-favorite .favorite-icon {
+    display: inline-block;
+    transition: color 0.2s ease-in-out;
+}
+
+.btn-favorite.favorited .favorite-icon {
+    color: #ffc107; /* Gold color for favorited */
+}
+
+.btn-favorite:hover .favorite-icon {
+    color: #ffc107; /* Gold color on hover (whether favorited or not) */
+}
+
+/* Dark mode specific adjustments for favorite button if needed */
+body.dark-mode .btn-favorite {
+    color: #555; /* Darker grey for unfavorited in dark mode */
+}
+
+body.dark-mode .btn-favorite.favorited .favorite-icon {
+    color: #ffda6b; /* Slightly lighter gold for dark mode */
+}
+
+body.dark-mode .btn-favorite:hover .favorite-icon {
+    color: #ffda6b; /* Lighter gold on hover in dark mode */
+}
+
+/* Recently Read Section Styles */
+.recent-reads-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 2px solid #000;
+    background-color: #f8f8f8; /* Light mode background */
+}
+
+.recent-reads-section h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #ccc;
+    font-size: 1.2em;
+}
+
+#recent-reads-list {
+    list-style-type: none;
+    padding-left: 0;
+    margin-top: 0;
+}
+
+#recent-reads-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+
+#recent-reads-list li:last-child {
+    border-bottom: none;
+}
+
+#recent-reads-list li a {
+    text-decoration: none;
+    color: #000;
+}
+
+#recent-reads-list li a:hover {
+    text-decoration: underline;
+}
+
+#recent-reads-list li .timestamp {
+    font-size: 0.8em;
+    color: #666;
+    margin-left: 10px;
+}
+
+#empty-recent-reads-message {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+/* Dark Mode for Recently Read Section */
+body.dark-mode .recent-reads-section {
+    background-color: #2a2a2a;
+    border-color: #444;
+    color: #e0e0e0;
+}
+
+body.dark-mode .recent-reads-section h3 {
+    border-bottom-color: #444;
+    color: #f5f5f5;
+}
+
+body.dark-mode #recent-reads-list li {
+    border-bottom-color: #3a3a3a;
+}
+
+body.dark-mode #recent-reads-list li a {
+    color: #8ab4f8;
+}
+
+body.dark-mode #recent-reads-list li .timestamp {
+    color: #aaa;
+}
+
+body.dark-mode #empty-recent-reads-message {
+    color: #aaa;
+}
+
+/* Comic Reader Styles */
+.comic-reader-container {
+    width: 100%;
+}
+
+.comic-controls {
+    text-align: center;
+    margin-bottom: 15px;
+    padding: 10px;
+    border-bottom: 2px solid #000; /* Consistent with other controls */
+}
+
+.comic-controls button {
+    margin: 0 10px;
+}
+
+.comic-controls #comic-page-info {
+    margin: 0 15px;
+    font-weight: bold;
+    display: inline-block; /* Allows margin */
+}
+
+.comic-image-container {
+    text-align: center;
+    background-color: #333; /* Dark background for image viewing area */
+    padding: 10px;
+    min-height: 70vh; /* Ensure it takes up significant space */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #000; /* Border for the container */
+}
+
+#comic-image {
+    max-width: 100%;
+    max-height: 85vh; /* Max height relative to viewport */
+    height: auto; /* Maintain aspect ratio */
+    display: block;
+    margin: 0 auto; /* Center image if it's smaller than container */
+    border: 1px solid #555; /* Slight border around image itself */
+    background-color: #fff; /* White background for transparent images, if any */
+}
+
+/* Dark Mode for Comic Reader */
+body.dark-mode .comic-controls {
+    border-bottom-color: #444;
+}
+
+body.dark-mode .comic-image-container {
+    background-color: #1a1a1a; /* Even darker for image area in dark mode */
+    border-color: #444;
+}
+
+body.dark-mode #comic-image {
+    border-color: #333;
+    /* background-color: #ddd; */ /* Lighter background for transparent images in dark mode if needed */
+}
+
+/* Metadata Editor Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: #fff;
+    padding: 25px;
+    border: 2px solid #000;
+    border-radius: 8px; /* Slightly more rounded */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    width: 90%;
+    max-width: 450px;
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.4em;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+}
+
+.modal-content .form-group {
+    margin-bottom: 15px;
+}
+
+.modal-content .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.modal-content .form-control {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+.modal-actions {
+    margin-top: 20px;
+    text-align: right;
+}
+.modal-actions .btn {
+    margin-left: 10px;
+}
+
+/* Dark Mode for Modal */
+body.dark-mode .modal-content {
+    background-color: #2c2c2c;
+    border-color: #555;
+    color: #e0e0e0;
+}
+body.dark-mode .modal-content h3 {
+    border-bottom-color: #444;
+    color: #f5f5f5;
+}
+body.dark-mode .modal-content .form-group label {
+    color: #e0e0e0;
+}
+body.dark-mode .modal-content .form-control {
+    background-color: #3a3a3a;
+    border-color: #555;
+    color: #e0e0e0;
+}
+body.dark-mode .modal-content .form-control:focus {
+    border-color: #8ab4f8;
+}
+/* Buttons in modal already inherit dark mode .btn styles */
+
+[end of static/css/style.css]
+
+[end of static/css/style.css]

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}{{ filename }} - 漫画阅读{% endblock %}
+
+{% block navigation %}
+<nav class="reader-nav">
+    <a href="{{ url_for('index') }}" class="nav-link">🏠 返回文件列表</a>
+    <span class="separator">|</span>
+    <span class="current-file">📖 {{ filename }}</span> {# Using book icon for consistency with other readers #}
+    <span class="separator">|</span>
+    <a href="{{ url_for('download_file', path=file_path) }}" class="nav-link">⬇️ 下载</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="comic-reader-container">
+    <div class="comic-controls" style="text-align: center; margin-bottom: 15px;">
+        <button id="prev-comic-page" class="btn btn-primary">上一页</button>
+        <span id="comic-page-info" style="margin: 0 15px; font-weight: bold;">
+            页码: <span id="current-comic-page">1</span> / <span id="total-comic-pages">{{ total_pages }}</span>
+        </span>
+        <button id="next-comic-page" class="btn btn-primary">下一页</button>
+    </div>
+    <div class="comic-image-container" style="text-align: center; background-color: #333; padding: 10px; min-height: 70vh; display: flex; align-items: center; justify-content: center;">
+        <img id="comic-image" src="" alt="漫画图片加载中..." style="max-width: 100%; max-height: 85vh; height: auto; display: block; margin: 0 auto; border: 1px solid #555;"/>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }} {# Includes base scripts like recent_reads.js, favorites.js, theme.js #}
+<script>
+    // Pass data to comic_reader.js
+    const comicData = {
+        image_list: {{ image_list|tojson|safe }},
+        comic_file_path_encoded: "{{ comic_file_path_encoded|e|safe }}",
+        total_pages: parseInt("{{ total_pages }}", 10),
+        current_file_path_for_recent: "{{ file_path|e|safe }}",
+        original_filename: "{{ filename|e|safe }}" // Pass original filename to JS
+    };
+    // const initialFileNameForRecent = "{{ filename|e|safe }}"; // Now part of comicData
+</script>
+<script>
+// This script block should run before comic_reader.js if it needs to modify DOM title before that script uses it
+// or comic_reader.js can handle the title update itself.
+// Let's assume comic_reader.js will handle DOM title update using comicData.original_filename and metadataManager.
+document.addEventListener('DOMContentLoaded', function() {
+    // Update nav title (if metadata_editor.js is loaded and available)
+    const currentFileSpan = document.querySelector('.reader-nav .current-file');
+    if (currentFileSpan && typeof metadataEditorManager !== 'undefined' && comicData && comicData.current_file_path_for_recent && comicData.original_filename) {
+        const displayTitle = metadataEditorManager.getDisplayTitle(comicData.current_file_path_for_recent, comicData.original_filename);
+        currentFileSpan.textContent = `📖 ${displayTitle}`;
+    } else if (currentFileSpan && comicData && comicData.original_filename) {
+        currentFileSpan.textContent = `📖 ${comicData.original_filename}`; // Fallback
+    }
+
+    // Add to recent reads is handled within comic_reader.js using comicData variables
+});
+</script>
+<script src="{{ url_for('static', filename='js/comic_reader.js') }}"></script>
+{% endblock %}

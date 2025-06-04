@@ -38,8 +38,34 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }} {# Ensures scripts from base.html like recent_reads.js are loaded first #}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const filePath = "{{ file_path|e|safe }}";
+    const originalFilename = "{{ filename|e|safe }}";
+
+    // Update displayed title in .pdf-info and .current-file (if it exists from base)
+    const pdfInfoSpan = document.querySelector('.pdf-controls .pdf-info');
+    const currentFileSpan = document.querySelector('.reader-nav .current-file'); // From base nav block
+
+    if (typeof metadataEditorManager !== 'undefined') {
+        const displayTitle = metadataEditorManager.getDisplayTitle(filePath, originalFilename);
+        if (pdfInfoSpan) {
+            pdfInfoSpan.textContent = `PDF文件：${displayTitle}`;
+        }
+        if (currentFileSpan) { // Update breadcrumb/nav title if that element is present
+            currentFileSpan.textContent = `📄 ${displayTitle}`;
+        }
+    }
+
+
+    if (typeof recentReadsManager !== 'undefined' && filePath && originalFilename) {
+        recentReadsManager.addRecentRead(filePath, originalFilename);
+    } else {
+        console.warn('RecentReadsManager not available or filePath/originalFilename missing for pdf_reader.html');
+    }
+
+    // Existing PDF reader specific JS follows
     const fullscreenBtn = document.getElementById('pdf-fullscreen');
     
     // 浏览器全屏功能

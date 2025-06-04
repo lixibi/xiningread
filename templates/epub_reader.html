@@ -95,6 +95,46 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }} {# Ensures scripts from base.html like recent_reads.js are loaded first #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filePath = "{{ file_path|e|safe }}";
+    const serverFilename = "{{ filename|e|safe }}"; // This is os.path.basename(file_path)
+    const epubInternalTitle = "{{ epub_data.title|e|safe if epub_data and epub_data.title else '' }}";
+
+    // Determine the best original name for display and recent reads
+    const originalNameToUse = epubInternalTitle || serverFilename;
+
+    // Update displayed title in nav and h1
+    const currentFileSpan = document.querySelector('.reader-nav .current-file');
+    const h1Title = document.querySelector('h1.epub-title');
+
+    if (typeof metadataEditorManager !== 'undefined') {
+        const displayTitle = metadataEditorManager.getDisplayTitle(filePath, originalNameToUse);
+        if (currentFileSpan) {
+            currentFileSpan.textContent = `📚 ${displayTitle}`;
+        }
+        if (h1Title) {
+            h1Title.textContent = displayTitle;
+        }
+    } else {
+        // Fallback if metadata manager not found
+        if (currentFileSpan) {
+            currentFileSpan.textContent = `📚 ${originalNameToUse}`;
+        }
+        if (h1Title) {
+            h1Title.textContent = originalNameToUse;
+        }
+    }
+
+    // Add to recent reads using the determined original name
+    if (typeof recentReadsManager !== 'undefined' && filePath && originalNameToUse) {
+        recentReadsManager.addRecentRead(filePath, originalNameToUse);
+    } else {
+        console.warn('RecentReadsManager not available or filePath/originalNameToUse missing for epub_reader.html');
+    }
+});
+</script>
 <script src="{{ url_for('static', filename='js/reader.js') }}"></script>
 <script>
 // EPUB特定的样式调整

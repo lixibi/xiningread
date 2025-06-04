@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}我的收藏 - 希宁阅读{% endblock %}
+
+{% block navigation %}
+<nav class="breadcrumb">
+    <a href="{{ url_for('index') }}" class="nav-link">🏠 首页</a>
+    <span class="separator">></span>
+    <a href="{{ url_for('favorites_page') }}" class="nav-link current">⭐ 我的收藏</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="favorites-container">
+    <h2>⭐ 我的收藏</h2>
+
+    <div id="favorites-list-container" class="file-browser" style="margin-top: 20px;">
+        <!-- Favorite items will be loaded here by JavaScript -->
+    </div>
+
+    <p id="empty-favorites-message" style="display:none; text-align:center; margin-top: 30px; font-size: 1.1em;">
+        您还没有收藏任何书籍。去文件列表看看吧！
+    </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }} {# This ensures scripts from base.html (like favorites.js and theme.js) are included #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const favoritesListContainer = document.getElementById('favorites-list-container');
+    const emptyMessage = document.getElementById('empty-favorites-message');
+    const favorites = favoritesManager.getFavorites();
+
+    function renderFavorites() {
+        favoritesListContainer.innerHTML = ''; // Clear previous items
+
+        if (favorites.length === 0) {
+            if (emptyMessage) emptyMessage.style.display = 'block';
+            if (favoritesListContainer) favoritesListContainer.style.display = 'none';
+            return;
+        }
+
+        if (emptyMessage) emptyMessage.style.display = 'none';
+        if (favoritesListContainer) favoritesListContainer.style.display = 'block';
+
+        favorites.forEach(filePath => {
+            let originalFileName = filePath.split('/').pop();
+            let displayFileName = originalFileName;
+            if (typeof metadataEditorManager !== 'undefined') {
+                displayFileName = metadataEditorManager.getDisplayTitle(filePath, originalFileName);
+            }
+
+            const fileItemDiv = document.createElement('div');
+            fileItemDiv.className = 'file-item file'; // Use existing styles
+
+            // Simplified structure compared to index.html, can be expanded
+            // Ensure displayFileName is HTML-escaped if it can contain special characters,
+            // though textContent assignment is safer. Here, it's part of innerHTML.
+            // For simplicity, assuming displayFileName is safe or XSS is handled by context.
+            // A safer way: build DOM elements individually and set textContent.
+            fileItemDiv.innerHTML = `
+                <div class="file-info">
+                    <span class="file-icon">📄</span>
+                    <span class="file-name">${displayFileName}</span>
+                </div>
+                <div class="file-actions">
+                    <a href="/read?path=${encodeURIComponent(filePath)}" class="btn btn-primary">📖 阅读</a>
+                    <button class="btn btn-favorite remove-from-fav" data-filepath="${filePath}" title="取消收藏">
+                        <span class="favorite-icon">★</span> <!-- Assuming it's favorited if listed here -->
+                    </button>
+                </div>
+            `;
+
+            favoritesListContainer.appendChild(fileItemDiv);
+        });
+
+        // Add event listeners to new "remove" buttons
+        favoritesListContainer.querySelectorAll('.remove-from-fav').forEach(button => {
+            button.addEventListener('click', function() {
+                const path = this.dataset.filepath;
+                favoritesManager.removeFavorite(path);
+                renderFavorites(); // Re-render the list
+            });
+        });
+    }
+
+    if (favoritesManager && typeof favoritesManager.getFavorites === 'function') {
+        renderFavorites();
+    } else {
+        console.error("FavoritesManager is not available. Ensure favorites.js is loaded before this script block.");
+        if (emptyMessage) {
+            emptyMessage.textContent = "无法加载收藏功能。";
+            emptyMessage.style.display = 'block';
+        }
+    }
+});
+</script>
+{% endblock %}

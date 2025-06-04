@@ -26,8 +26,11 @@
 
     <div class="reading-area" id="reading-area">
         {% if file_type == 'markdown' and html_content %}
-            <div class="markdown-content">{{ html_content|safe }}</div>
+            <div id="content-container" class="markdown-content"></div> {# Empty container for JS rendering #}
+            <script id="full-content-data" type="text/plain" style="display:none;">{{ html_content|safe }}</script>
         {% elif file_type == 'code' %}
+            {# Code content is often pre-formatted by Pygments; chunking might break highlighting spans. #}
+            {# For now, render code directly. Performance issues with huge code files are less common than huge TXT/MD. #}
             <div class="code-content">
                 <div class="code-header">
                     <span class="language-label">{{ language.upper() }}</span>
@@ -36,9 +39,11 @@
                 <pre class="code-block language-{{ language }}"><code>{{ content }}</code></pre>
             </div>
         {% elif file_type == 'txt' %}
-            <div class="txt-content">{{ content|safe }}</div>
-        {% else %}
-            <pre class="file-content">{{ content }}</pre>
+            <div id="content-container" class="txt-content"></div> {# Empty container for JS rendering #}
+            <script id="full-content-data" type="text/plain" style="display:none;">{{ content|e }}</script> {# Escape TXT content just in case #}
+        {% else %} {# Handles generic 'text' or unspecified types as plain text #}
+            <div id="content-container" class="file-content"></div> {# Empty container for JS rendering #}
+            <script id="full-content-data" type="text/plain" style="display:none;">{{ content|e }}</script> {# Escape plain content #}
         {% endif %}
     </div>
 
@@ -62,5 +67,26 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }} {# Ensures scripts from base.html like recent_reads.js are loaded first #}
 <script src="{{ url_for('static', filename='js/reader.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filePath = "{{ file_path|e|safe }}"; // file_path from backend
+    const originalFilename = "{{ filename|e|safe }}"; // filename from backend is original
+
+    // Update displayed title using metadataManager
+    const currentFileSpan = document.querySelector('.reader-nav .current-file');
+    if (currentFileSpan && typeof metadataEditorManager !== 'undefined') {
+        const displayTitle = metadataEditorManager.getDisplayTitle(filePath, originalFilename);
+        currentFileSpan.textContent = `📄 ${displayTitle}`; // Update the visual title
+    }
+
+    // Add to recent reads using original filename
+    if (typeof recentReadsManager !== 'undefined' && filePath && originalFilename) {
+        recentReadsManager.addRecentRead(filePath, originalFilename);
+    } else {
+        console.warn('RecentReadsManager not available or filePath/originalFilename missing for reader.html');
+    }
+});
+</script>
 {% endblock %}
