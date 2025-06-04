@@ -1267,3 +1267,122 @@ body.dark-mode.custom-font h6 {
 #theme-toggle-btn {
     border-radius: 5px; /* Example of specific button styling */
 }
+
+/* Favorite Button Styles */
+.btn-favorite {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px; /* Minimal padding */
+    margin-left: 8px; /* Space from previous button */
+    font-size: 1.5em; /* Larger icon */
+    color: #ccc; /* Default (unfavorited) color - light grey */
+    vertical-align: middle; /* Align with other buttons */
+    line-height: 1; /* Prevent extra spacing */
+}
+
+.btn-favorite .favorite-icon {
+    display: inline-block;
+    transition: color 0.2s ease-in-out;
+}
+
+.btn-favorite.favorited .favorite-icon {
+    color: #ffc107; /* Gold color for favorited */
+}
+
+.btn-favorite:hover .favorite-icon {
+    color: #ffc107; /* Gold color on hover (whether favorited or not) */
+}
+
+/* Dark mode specific adjustments for favorite button if needed */
+body.dark-mode .btn-favorite {
+    color: #555; /* Darker grey for unfavorited in dark mode */
+}
+
+body.dark-mode .btn-favorite.favorited .favorite-icon {
+    color: #ffda6b; /* Slightly lighter gold for dark mode */
+}
+
+body.dark-mode .btn-favorite:hover .favorite-icon {
+    color: #ffda6b; /* Lighter gold on hover in dark mode */
+}
+
+/* Recently Read Section Styles */
+.recent-reads-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 2px solid #000;
+    background-color: #f8f8f8; /* Light mode background */
+}
+
+.recent-reads-section h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #ccc;
+    font-size: 1.2em;
+}
+
+#recent-reads-list {
+    list-style-type: none;
+    padding-left: 0;
+    margin-top: 0;
+}
+
+#recent-reads-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+
+#recent-reads-list li:last-child {
+    border-bottom: none;
+}
+
+#recent-reads-list li a {
+    text-decoration: none;
+    color: #000;
+}
+
+#recent-reads-list li a:hover {
+    text-decoration: underline;
+}
+
+#recent-reads-list li .timestamp {
+    font-size: 0.8em;
+    color: #666;
+    margin-left: 10px;
+}
+
+#empty-recent-reads-message {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+/* Dark Mode for Recently Read Section */
+body.dark-mode .recent-reads-section {
+    background-color: #2a2a2a;
+    border-color: #444;
+    color: #e0e0e0;
+}
+
+body.dark-mode .recent-reads-section h3 {
+    border-bottom-color: #444;
+    color: #f5f5f5;
+}
+
+body.dark-mode #recent-reads-list li {
+    border-bottom-color: #3a3a3a;
+}
+
+body.dark-mode #recent-reads-list li a {
+    color: #8ab4f8;
+}
+
+body.dark-mode #recent-reads-list li .timestamp {
+    color: #aaa;
+}
+
+body.dark-mode #empty-recent-reads-message {
+    color: #aaa;
+}

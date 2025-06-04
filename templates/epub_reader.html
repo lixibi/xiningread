@@ -95,6 +95,18 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }} {# Ensures scripts from base.html like recent_reads.js are loaded first #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filePath = "{{ file_path|e }}";
+    const fileName = "{{ filename|e }}"; // Or epub_data.title if preferred
+    if (typeof recentReadsManager !== 'undefined' && filePath && fileName) {
+        recentReadsManager.addRecentRead(filePath, fileName);
+    } else {
+        console.warn('RecentReadsManager not available or filePath/fileName missing for epub_reader.html');
+    }
+});
+</script>
 <script src="{{ url_for('static', filename='js/reader.js') }}"></script>
 <script>
 // EPUB特定的样式调整

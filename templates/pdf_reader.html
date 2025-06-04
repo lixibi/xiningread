@@ -38,6 +38,18 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }} {# Ensures scripts from base.html like recent_reads.js are loaded first #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filePath = "{{ file_path|e }}";
+    const fileName = "{{ filename|e }}";
+    if (typeof recentReadsManager !== 'undefined' && filePath && fileName) {
+        recentReadsManager.addRecentRead(filePath, fileName);
+    } else {
+        console.warn('RecentReadsManager not available or filePath/fileName missing for pdf_reader.html');
+    }
+});
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const fullscreenBtn = document.getElementById('pdf-fullscreen');

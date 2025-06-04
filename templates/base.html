@@ -27,6 +27,8 @@
     </div>
     
     {% block scripts %}{% endblock %}
+    <script src="{{ url_for('static', filename='js/recent_reads.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/favorites.js') }}"></script>
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 </body>
 </html>

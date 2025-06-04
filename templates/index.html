@@ -6,14 +6,15 @@
 <nav class="breadcrumb">
     <a href="{{ url_for('index') }}" class="nav-link">🏠 首页</a>
     <a href="{{ url_for('local_reader') }}" class="nav-link">📱 查看本地书</a>
+    <a href="{{ url_for('favorites_page') }}" class="nav-link">⭐ 我的收藏</a>
     {% if current_path %}
+        <span class="separator">></span>
         {% set path_parts = current_path.split('/') %}
         {% for part in path_parts %}
             {% if not loop.last %}
-                <span class="separator">></span>
                 <a href="{{ url_for('index', path='/'.join(path_parts[:loop.index])) }}" class="nav-link">{{ part }}</a>
-            {% else %}
                 <span class="separator">></span>
+            {% else %}
                 <span class="current-folder">{{ part }}</span>
             {% endif %}
         {% endfor %}
@@ -26,6 +27,14 @@
     <h2>欢迎使用 希宁阅读</h2>
     <p>希宁阅读 (XiningRead) 是一款专为墨水屏优化的个人读书应用，致力于提供纯粹、舒适的阅读体验。</p>
     <p>您当前浏览的是<strong>服务器书库</strong>中的书籍（位于 <code>filesystem</code> 目录）。您也可以通过导航栏的 “<a href='{{ url_for('local_reader') }}'>📱 查看本地书</a>” 选项来上传并阅读您设备上的书籍。</p>
+</div>
+
+<div class="recent-reads-section" style="margin-bottom: 20px; padding: 15px; border: 2px solid #000; background-color: #f8f8f8;">
+    <h3 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">最近阅读</h3>
+    <ul id="recent-reads-list" style="list-style-type: none; padding-left: 0;">
+        <!-- JS will populate this -->
+    </ul>
+    <p id="empty-recent-reads-message" style="display:none; text-align:center;">暂无最近阅读记录。</p>
 </div>
 
 <div class="search-bar" style="margin-bottom: 15px;">
@@ -71,8 +80,14 @@
         <div class="file-actions">
             {% if file.is_text %}
                 <a href="{{ url_for('read_file', path=file.path) }}" class="btn btn-primary">📖 阅读</a>
+                <button class="btn btn-favorite" data-filepath="{{ file.path }}" title="收藏/取消收藏">
+                    <span class="favorite-icon">☆</span>
+                </button>
             {% else %}
                 <a href="{{ url_for('download_file', path=file.path) }}" class="btn btn-secondary">⬇️ 下载</a>
+                <button class="btn btn-favorite" data-filepath="{{ file.path }}" title="收藏/取消收藏">
+                    <span class="favorite-icon">☆</span>
+                </button>
             {% endif %}
         </div>
     </div>
