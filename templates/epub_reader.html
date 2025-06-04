@@ -29,6 +29,18 @@
             <div class="epub-header">
                 <h1 class="epub-title">{{ epub_data.title }}</h1>
                 <p class="epub-author">作者：{{ epub_data.author }}</p>
+                {% if epub_data.publisher and epub_data.publisher != "未知" %}
+                    <p class="epub-meta"><strong>出版社:</strong> {{ epub_data.publisher }}</p>
+                {% endif %}
+                {% if epub_data.publication_date and epub_data.publication_date != "未知" %}
+                    <p class="epub-meta"><strong>出版日期:</strong> {{ epub_data.publication_date }}</p>
+                {% endif %}
+                {% if epub_data.language and epub_data.language != "未知" %}
+                    <p class="epub-meta"><strong>语言:</strong> {{ epub_data.language }}</p>
+                {% endif %}
+                {% if epub_data.isbn and epub_data.isbn != "未知" %}
+                    <p class="epub-meta"><strong>ISBN:</strong> {{ epub_data.isbn }}</p>
+                {% endif %}
             </div>
 
             <div class="epub-content" id="epub-content">

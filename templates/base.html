@@ -12,6 +12,9 @@
         <header class="header">
             <h1>📚 希宁阅读</h1>
             {% block navigation %}{% endblock %}
+            <div style="text-align: center; margin-top: 10px;">
+                <button id="theme-toggle-btn" class="btn btn-control">切换主题</button>
+            </div>
         </header>
         
         <main class="main-content">
@@ -24,5 +27,6 @@
     </div>
     
     {% block scripts %}{% endblock %}
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 </body>
 </html>
