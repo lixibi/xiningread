@@ -85,7 +85,12 @@ function displayRecentReads() {
             // Assuming read_file_url_template is available globally or passed appropriately if complex routing is needed.
             // For simple query param like /read?path=...
             link.href = `/read?path=${encodeURIComponent(item.path)}`;
-            link.textContent = item.name;
+            // Use MetadataEditorManager to get the display title
+            if (typeof metadataEditorManager !== 'undefined') {
+                link.textContent = metadataEditorManager.getDisplayTitle(item.path, item.name);
+            } else {
+                link.textContent = item.name; // Fallback if manager not found
+            }
             // Add a class for styling if needed, e.g., link.className = 'recent-read-link';
 
             const timestamp = new Date(item.timestamp);

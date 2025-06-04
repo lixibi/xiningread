@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}电子阅读器{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <!-- PWA Manifest Link -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+
+    <!-- iOS Safari Meta Tags (Optional but good practice) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"> <!-- or black -->
+    <meta name="apple-mobile-web-app-title" content="希宁阅读">
+    <!-- Link to an Apple touch icon (needs an icon file) -->
+    <!-- <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/apple-touch-icon.png') }}"> -->
+
     {% block head %}{% endblock %}
 </head>
 <body>
@@ -25,10 +36,34 @@
             <p>一页知星海 ✨ | 墨水屏优化的个人读书应用</p>
         </footer>
     </div>
+
+    <!-- Metadata Editor Modal -->
+    <div id="metadata-editor-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <h3>编辑元数据</h3>
+            <p>文件: <span id="meta-editor-filename" style="font-weight:bold;"></span></p>
+            <input type="hidden" id="meta-editor-filepath" value="">
+            <div class="form-group">
+                <label for="meta-editor-title">标题:</label>
+                <input type="text" id="meta-editor-title" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="meta-editor-author">作者:</label>
+                <input type="text" id="meta-editor-author" class="form-control">
+            </div>
+            <div class="modal-actions">
+                <button id="meta-editor-save" class="btn btn-primary">保存</button>
+                <button id="meta-editor-cancel" class="btn">取消</button>
+            </div>
+        </div>
+    </div>
     
     {% block scripts %}{% endblock %}
+    <script src="{{ url_for('static', filename='js/metadata_editor.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/annotations.js') }}"></script>
     <script src="{{ url_for('static', filename='js/recent_reads.js') }}"></script>
     <script src="{{ url_for('static', filename='js/favorites.js') }}"></script>
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pwa_init.js') }}"></script>
 </body>
 </html>

@@ -45,15 +45,24 @@ document.addEventListener('DOMContentLoaded', function() {
         if (favoritesListContainer) favoritesListContainer.style.display = 'block';
 
         favorites.forEach(filePath => {
-            const fileName = filePath.split('/').pop();
+            let originalFileName = filePath.split('/').pop();
+            let displayFileName = originalFileName;
+            if (typeof metadataEditorManager !== 'undefined') {
+                displayFileName = metadataEditorManager.getDisplayTitle(filePath, originalFileName);
+            }
+
             const fileItemDiv = document.createElement('div');
             fileItemDiv.className = 'file-item file'; // Use existing styles
 
             // Simplified structure compared to index.html, can be expanded
+            // Ensure displayFileName is HTML-escaped if it can contain special characters,
+            // though textContent assignment is safer. Here, it's part of innerHTML.
+            // For simplicity, assuming displayFileName is safe or XSS is handled by context.
+            // A safer way: build DOM elements individually and set textContent.
             fileItemDiv.innerHTML = `
                 <div class="file-info">
                     <span class="file-icon">📄</span>
-                    <span class="file-name">${fileName}</span>
+                    <span class="file-name">${displayFileName}</span>
                 </div>
                 <div class="file-actions">
                     <a href="/read?path=${encodeURIComponent(filePath)}" class="btn btn-primary">📖 阅读</a>

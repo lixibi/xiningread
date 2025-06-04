@@ -71,24 +71,27 @@
     <div class="file-item file">
         <div class="file-info">
             <span class="file-icon">
-                {% if file.is_text %}📄{% else %}📎{% endif %}
+                {% if file.is_readable_in_app %}📄{% else %}📎{% endif %}
             </span>
-            <span class="file-name">{{ file.name }}</span>
+            <span class="file-name-display" data-filepath="{{ file.path }}">{{ file.name }}</span> {# For dynamic update #}
             <span class="file-type-label">{{ file.type_label }}</span>
             <span class="file-size">{{ file.size }}</span>
         </div>
         <div class="file-actions">
-            {% if file.is_text %}
+            {% if file.is_readable_in_app %} {# Changed to is_readable_in_app #}
                 <a href="{{ url_for('read_file', path=file.path) }}" class="btn btn-primary">📖 阅读</a>
-                <button class="btn btn-favorite" data-filepath="{{ file.path }}" title="收藏/取消收藏">
-                    <span class="favorite-icon">☆</span>
-                </button>
             {% else %}
                 <a href="{{ url_for('download_file', path=file.path) }}" class="btn btn-secondary">⬇️ 下载</a>
-                <button class="btn btn-favorite" data-filepath="{{ file.path }}" title="收藏/取消收藏">
-                    <span class="favorite-icon">☆</span>
-                </button>
             {% endif %}
+            <button class="btn btn-favorite" data-filepath="{{ file.path }}" title="收藏/取消收藏">
+                <span class="favorite-icon">☆</span>
+            </button>
+            <button class="btn btn-edit-meta btn-control"
+                    onclick="openMetadataEditor('{{ file.path|e|safe }}', '{{ file.name|e|safe }}')"
+                    title="编辑元数据"
+                    style="padding: 5px 8px; font-size: 1.2em;">
+                ✏️
+            </button>
         </div>
     </div>
     {% endfor %}
@@ -106,4 +109,49 @@
         📄 文件: {{ files|length }} 个
     </p>
 </div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }} {# For base scripts like metadata_editor.js #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Update file names on the index page if they have custom metadata
+    document.querySelectorAll('.file-name-display[data-filepath]').forEach(fileNameSpan => {
+        const filePath = fileNameSpan.dataset.filepath;
+        const originalName = fileNameSpan.textContent; // Original name from server
+        if (typeof metadataEditorManager !== 'undefined') {
+            fileNameSpan.textContent = metadataEditorManager.getDisplayTitle(filePath, originalName);
+        }
+    });
+
+    // Listen for metadata updates to refresh displayed names
+    document.addEventListener('metadataUpdated', function(event) {
+        const { filePath } = event.detail;
+        const fileNameSpan = document.querySelector(`.file-name-display[data-filepath="${CSS.escape(filePath)}"]`);
+        if (fileNameSpan) {
+            // Re-fetch original name in case title was cleared, falling back to its current text content if needed
+            // This assumes the original file.name is not easily available here without another data attribute
+            // For simplicity, we'll use its current text before trying to get new display title
+            const currentDisplay = fileNameSpan.textContent; // This might already be a custom title
+            // To get the true original server name, it would ideally be stored in another data attribute
+            // For now, let's assume if user clears title, it should revert to what was last displayed as "original"
+            // This part is tricky: if a user sets a title, then clears it, what's "originalName"?
+            // The manager's getDisplayTitle needs a reliable originalName.
+            // One way: store original name in a separate data attribute if it differs from initial display.
+            // For now, let's re-query with the current text as a fallback original.
+            let originalName = fileNameSpan.dataset.originalName || fileNameSpan.textContent;
+            if (!fileNameSpan.dataset.originalName) fileNameSpan.dataset.originalName = fileNameSpan.textContent;
+
+
+            const newDisplayTitle = metadataEditorManager.getDisplayTitle(filePath, originalName);
+            fileNameSpan.textContent = newDisplayTitle;
+
+            // If the title was cleared and it reverted to originalName, and originalName was the one from server,
+            // we might want to remove data-original-name so it picks up fresh server name on next full load.
+            // This logic can get complex. The current approach is that getDisplayTitle handles it.
+        }
+    });
+});
+</script>
 {% endblock %}

@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}{{ fb2_data.metadata.book_title or filename }} - FB2 阅读 - 希宁阅读{% endblock %}
+
+{% block navigation %}
+<nav class="reader-nav">
+    <a href="{{ url_for('index') }}" class="nav-link">🏠 返回文件列表</a>
+    <span class="separator">|</span>
+    {# This will be updated by JS to use custom title if available #}
+    <span class="current-file">📖 {{ fb2_data.metadata.book_title or filename }}</span>
+    <span class="separator">|</span>
+    <a href="{{ url_for('download_file', path=file_path) }}" class="nav-link">⬇️ 下载</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="reader-container fb2-reader-container" id="reader-container">
+    <div class="reader-controls" id="reader-controls">
+        <button class="control-toggle" id="control-toggle">⚙️ 阅读设置</button>
+        <div class="control-buttons" id="control-buttons">
+            <button id="font-smaller" class="btn btn-control">🔤- 缩小字体</button>
+            <button id="font-larger" class="btn btn-control">🔤+ 放大字体</button>
+            <button id="fullscreen-browser" class="btn btn-control">🔳 浏览器全屏</button>
+            <button id="bookmark-btn" class="btn btn-control">🔖 书签</button>
+            {# Add other controls as needed, e.g., line height, width, if reader.js supports them generally #}
+        </div>
+    </div>
+
+    <div class="fb2-header" style="text-align: center; margin-bottom: 20px; padding-bottom:15px; border-bottom: 1px solid #ccc;">
+        <h2 id="fb2-display-title" style="margin-bottom: 5px;">{{ fb2_data.metadata.book_title or filename }}</h2>
+        {% if fb2_data.metadata.authors %}
+            <p style="font-size: 0.9em; color: #555;">
+                作者:
+                {% for author in fb2_data.metadata.authors %}
+                    {{ author.first_name }} {{ author.middle_name }} {{ author.last_name }} ({{ author.nickname }})
+                    {% if not loop.last %}; {% endif %}
+                {% endfor %}
+            </p>
+        {% endif %}
+        {% if fb2_data.metadata.lang %}
+            <p style="font-size: 0.8em; color: #777;">语言: {{ fb2_data.metadata.lang }}</p>
+        {% endif %}
+        {% if fb2_data.metadata.genre %}
+             <p style="font-size: 0.8em; color: #777;">类型: {{ fb2_data.metadata.genre|join(', ') }}</p>
+        {% endif %}
+    </div>
+
+    <div class="reading-area fb2-content" id="reading-area">
+        {# Content will be loaded here by JS for chunking, or directly if not chunking FB2 for now #}
+        {# For initial simplicity, render directly. Chunking can be added to reader.js for fb2-content later. #}
+        <div id="content-container" class="fb2-actual-content">
+             {{ fb2_data.html_content|safe }}
+        </div>
+    </div>
+
+    <!-- Vertical Progress Bar -->
+    <div class="reading-progress" id="reading-progress">
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-info"><span id="progress-text">0%</span></div>
+    </div>
+</div>
+
+<!-- Floating Page Navigation Buttons -->
+<div class="page-navigation" id="page-navigation">
+    <button id="page-up" class="page-btn page-up" title="上一页 (Page Up)">▲</button>
+    <button id="page-down" class="page-btn page-down" title="下一页 (Page Down)">▼</button>
+    <button id="bookmark-save" class="page-btn bookmark-btn" title="保存书签">💾</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }} {# Includes base scripts like recent_reads.js, metadata_editor.js, annotations.js, theme.js #}
+{# reader.js is also included via super() if it's in base.html, or linked directly if not. #}
+{# Assuming reader.js is part of base.html scripts or will be added to this block by super() #}
+{# If reader.js is not in base, it needs to be added: #}
+{# <script src="{{ url_for('static', filename='js/reader.js') }}"></script> #}
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filePath = "{{ file_path|e|safe }}";
+    const originalFilename = "{{ filename|e|safe }}"; // This is os.path.basename(file_path)
+    const fb2BookTitle = "{{ fb2_data.metadata.book_title|e|safe }}";
+    const bestOriginalName = fb2BookTitle || originalFilename;
+
+    // Update displayed title in nav and H2 using metadataManager
+    const currentFileSpan = document.querySelector('.reader-nav .current-file');
+    const h2Title = document.getElementById('fb2-display-title');
+
+    if (typeof metadataEditorManager !== 'undefined') {
+        const displayTitle = metadataEditorManager.getDisplayTitle(filePath, bestOriginalName);
+        if (currentFileSpan) {
+            currentFileSpan.textContent = `📖 ${displayTitle}`;
+        }
+        if (h2Title) {
+            h2Title.textContent = displayTitle;
+        }
+    } else {
+        // Fallback if metadata manager not found (should be loaded via super())
+        if (currentFileSpan) {
+            currentFileSpan.textContent = `📖 ${bestOriginalName}`;
+        }
+        if (h2Title) {
+            h2Title.textContent = bestOriginalName;
+        }
+    }
+
+    // Add to recent reads using the best original name
+    if (typeof recentReadsManager !== 'undefined' && filePath && bestOriginalName) {
+        recentReadsManager.addRecentRead(filePath, bestOriginalName);
+    } else {
+        console.warn('RecentReadsManager not available or filePath/bestOriginalName missing for fb2_reader.html');
+    }
+
+    // Initialize annotations for the current file
+    if (typeof annotationsManager !== 'undefined' && filePath) {
+        annotationsManager.setCurrentFile(filePath);
+        // Assuming reader.js (if it handles annotation rendering) is already loaded via {{ super() }}
+        // and will call applyAnnotationsToRenderedContent or similar.
+        // If FB2 content is not chunked by reader.js yet, call apply directly after content is known.
+        // For now, reader.js's applyAnnotationsToRenderedContent might need to be aware of fb2-actual-content.
+        // Let's ensure reader.js's activeContentElement can find '.fb2-actual-content'.
+        // Or, we call it here explicitly for FB2 if reader.js is too generic.
+        // The current reader.js targets #content-container or specific classes.
+        // We named the content div "content-container" here as well.
+
+        // If reader.js's chunking logic is NOT used for FB2 (content rendered directly):
+        if (document.getElementById('content-container') && document.getElementById('full-content-data') === null) {
+             // This means content was not passed via full-content-data, so it's directly in DOM.
+             // Annotations should be applied. reader.js might do this if activeContentElement is set right.
+             // For now, let's assume reader.js will pick up #content-container.
+             // If applyAnnotationsToRenderedContent is part of reader.js and runs on DOMContentLoaded,
+             // it should work provided activeContentElement is correctly identified.
+        }
+    }
+
+
+    // Specific FB2 styling or JS if needed (e.g., image popups, footnote handling)
+    // For now, relying on reader.js for common controls.
+    // Make sure reader.js's activeContentElement targets the right div for font changes etc.
+    const fb2ContentArea = document.getElementById('content-container');
+    if (fb2ContentArea && window.readerJsActiveContentElement) { // If reader.js exposes a way to set its target
+        window.readerJsActiveContentElement = fb2ContentArea;
+    } else if (fb2ContentArea && !document.querySelector('.code-block code') && !document.querySelector('pre.file-content')) {
+        // If reader.js uses a global activeContentElement and it's not set to a code block,
+        // we can try to make its styling apply here.
+        // This is a bit hacky; reader.js should ideally be more modular or accept a target.
+        // For now, assuming reader.js's font styling might apply to a general class or #reading-area.
+    }
+
+});
+</script>
+{% endblock %}
