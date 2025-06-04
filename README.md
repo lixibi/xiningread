@@ -58,7 +58,7 @@ docker-compose logs -f
 ```bash
 docker run -d -p 9588:9588 -v "$(pwd)/book:/app/filesystem" ghcr.io/lixibi/xiningread:latest
 ```
-**Note:** Replace `$(pwd)/book` with the actual path to your book directory on your host machine. For example, if your books are in `/my/books`, the command would be `-v "/my/books:/app/filesystem"`.
+**注意：** 请将命令中的 `$(pwd)/book` 替换为您宿主机上实际存放书籍的目录路径。例如，如果您的书籍存放在主机的 `/my/books` 目录下，那么对应的部分应修改为 `-v "/my/books:/app/filesystem"`。这个设置会将您宿主机的书籍目录挂载到 Docker 容器内的 `/app/filesystem` 路径，从而让应用能够读取到您的书籍。
 
 ### 访问地址
 - **本地访问**：http://localhost:9588
