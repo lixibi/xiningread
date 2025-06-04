@@ -937,3 +937,333 @@ body.custom-font h6 {
         margin-top: 5px;
     }
 }
+
+/* Dark Mode Styles */
+body.dark-mode {
+    background-color: #1e1e1e; /* 深灰色背景 */
+    color: #e0e0e0; /* 浅灰色文字 */
+}
+body.dark-mode .container,
+body.dark-mode .file-browser,
+body.dark-mode .reader-container,
+body.dark-mode .project-description,
+body.dark-mode .upload-area,
+body.dark-mode .file-info,
+body.dark-mode .supported-formats,
+body.dark-mode .local-reader-container,
+body.dark-mode .pdf-reader-container,
+body.dark-mode .epub-reader-container,
+body.dark-mode .html-reader-container,
+body.dark-mode .error-content {
+    background-color: #2a2a2a; /* 稍浅的深灰作为容器背景 */
+    border-color: #444;
+    color: #e0e0e0;
+}
+body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4,
+body.dark-mode .header h1, body.dark-mode .epub-title, body.dark-mode .error-code, body.dark-mode .error-message {
+    color: #f5f5f5; /* 标题用更亮的颜色 */
+}
+body.dark-mode a, body.dark-mode .nav-link {
+    color: #8ab4f8; /* 深色模式下的链接颜色 */
+    border-color: #555;
+}
+body.dark-mode a:hover, body.dark-mode .nav-link:hover {
+    color: #aecbfa;
+    background-color: #3a3a3a;
+    border-color: #777;
+}
+
+body.dark-mode .current-folder, body.dark-mode .current-file {
+    background-color: #8ab4f8;
+    color: #1e1e1e;
+}
+
+body.dark-mode .btn {
+    background-color: #383838;
+    color: #e0e0e0;
+    border-color: #555;
+}
+body.dark-mode .btn:hover {
+    background-color: #4a4a4a;
+    border-color: #777;
+}
+body.dark-mode .btn-primary {
+    background-color: #8ab4f8;
+    color: #1e1e1e;
+    border-color: #8ab4f8;
+}
+body.dark-mode .btn-primary:hover {
+    background-color: #aecbfa;
+    border-color: #aecbfa;
+}
+body.dark-mode .btn-secondary { /* Assuming this is for less prominent actions */
+    background-color: #4f4f4f;
+    color: #e0e0e0;
+    border-color: #666;
+}
+body.dark-mode .btn-secondary:hover {
+    background-color: #5a5a5a;
+}
+
+
+body.dark-mode .breadcrumb,
+body.dark-mode .reader-nav,
+body.dark-mode .header {
+    background-color: #2c2c2c;
+    border-bottom-color: #444;
+}
+body.dark-mode .file-item {
+    background-color: #2a2a2a;
+    border-color: #444;
+}
+body.dark-mode .file-item.directory {
+    background-color: #333; /* Slightly different for directories */
+}
+body.dark-mode .file-item:hover {
+    background-color: #3a3a3a;
+}
+body.dark-mode .file-type-label {
+    background-color: #e0e0e0;
+    color: #1e1e1e;
+}
+body.dark-mode .file-size, body.dark-mode .epub-author {
+    color: #aaa;
+}
+
+body.dark-mode .stats,
+body.dark-mode .reader-controls,
+body.dark-mode .pdf-controls,
+body.dark-mode .epub-controls,
+body.dark-mode .html-controls,
+body.dark-mode .footer {
+    background-color: #252525;
+    border-color: #444;
+    color: #e0e0e0;
+}
+
+body.dark-mode .reading-area,
+body.dark-mode .markdown-content,
+body.dark-mode .txt-content,
+body.dark-mode pre.file-content,
+body.dark-mode .epub-content,
+body.dark-mode .html-viewer,
+body.dark-mode .pdf-viewer,
+body.dark-mode .epub-viewer { /* epub-viewer might need its own background for content */
+    background-color: #2a2a2a;
+    color: #e0e0e0;
+}
+body.dark-mode .epub-viewer { /* Specifically for epub content area if it's white by default from epub */
+    background-color: #2a2a2a !important; /* Force if epub content has inline styles */
+}
+body.dark-mode .epub-content * { /* Try to override inline styles in EPUB */
+    background-color: transparent !important;
+    color: #e0e0e0 !important;
+}
+
+
+body.dark-mode .markdown-content h1 {
+    background-color: #8ab4f8;
+    color: #1e1e1e;
+    border-color: #555;
+}
+body.dark-mode .markdown-content h2, body.dark-mode .markdown-content h3 {
+    background-color: #333;
+    border-color: #555;
+}
+body.dark-mode .markdown-content blockquote {
+    background-color: #333;
+    border-left-color: #8ab4f8;
+}
+body.dark-mode .markdown-content code {
+    background-color: #383838;
+    border-color: #555;
+    color: #d4d4d4;
+}
+body.dark-mode .markdown-content pre {
+    background-color: #1c1c1c; /* Darker for code blocks */
+    border-color: #444;
+}
+body.dark-mode .markdown-content pre code {
+    color: #d4d4d4; /* Pygments friendly color */
+    background-color: transparent;
+}
+body.dark-mode .markdown-content table {
+    border-color: #555;
+}
+body.dark-mode .markdown-content thead th {
+    background-color: #8ab4f8;
+    color: #1e1e1e;
+    border-color: #555;
+}
+body.dark-mode .markdown-content tbody td {
+    background-color: #2a2a2a;
+    border-color: #444;
+}
+body.dark-mode .markdown-content tbody tr:nth-child(even) td {
+    background-color: #333;
+}
+body.dark-mode .markdown-content hr {
+    border-top-color: #555;
+}
+body.dark-mode .markdown-content a {
+    color: #8ab4f8;
+}
+body.dark-mode .markdown-content a:hover {
+    background-color: #8ab4f8;
+    color: #1e1e1e;
+}
+
+
+body.dark-mode .code-header {
+    background-color: #8ab4f8;
+    color: #1e1e1e;
+}
+body.dark-mode .language-label {
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+}
+body.dark-mode .code-block {
+    background-color: #1c1c1c;
+    border-color: #444;
+}
+body.dark-mode .code-block code,
+body.dark-mode code[class*="language-"],
+body.dark-mode pre[class*="language-"] {
+    color: #d4d4d4; /* Pygments in dark bg default */
+}
+
+body.dark-mode .progress-bar {
+    background-color: #3a3a3a;
+    border-color: #555;
+}
+body.dark-mode .progress-fill {
+    background-color: #8ab4f8;
+}
+body.dark-mode .progress-info {
+    color: #e0e0e0;
+}
+
+body.dark-mode .page-btn {
+    background-color: rgba(224, 224, 224, 0.6); /* Lighter buttons for dark mode */
+    color: #1e1e1e;
+}
+body.dark-mode .page-btn:hover {
+    background-color: rgba(224, 224, 224, 0.8);
+}
+body.dark-mode .bookmark-btn {
+    background-color: rgba(138, 180, 248, 0.4) !important; /* Light blueish for bookmark */
+    color: #e0e0e0 !important;
+}
+body.dark-mode .bookmark-btn:hover {
+    background-color: rgba(138, 180, 248, 0.6) !important;
+}
+
+/* Fullscreen in dark mode */
+body.dark-mode .fullscreen-mode {
+    background-color: #1e1e1e;
+}
+body.dark-mode .fullscreen-mode .reader-controls {
+    background-color: rgba(42, 42, 42, 0.95); /* #2a2a2a with opacity */
+    border-color: #444;
+}
+
+/* Upload area specific styles */
+body.dark-mode .upload-area {
+    border-color: #555;
+    background-color: #252525;
+}
+body.dark-mode .upload-area:hover, body.dark-mode .upload-area.dragover {
+    border-color: #8ab4f8;
+    background-color: #303030;
+}
+body.dark-mode .upload-btn { /* This is now a label */
+    background-color: #8ab4f8;
+    color: #1e1e1e;
+}
+body.dark-mode .upload-btn:hover {
+    background-color: #aecbfa;
+}
+
+body.dark-mode .file-info, /* Div container for filename, size etc in local_reader */
+body.dark-mode .supported-formats {
+    background-color: #252525;
+    border-color: #444;
+}
+body.dark-mode .format-tag {
+    background-color: #8ab4f8;
+    color: #1e1e1e;
+}
+
+body.dark-mode .error-message { /* Used in local_reader.html */
+    color: #f8d7da;
+    background-color: #721c24; /* Dark red background */
+    border-color: #f5c6cb;
+}
+body.dark-mode .success-message { /* Used in local_reader.html */
+    color: #d4edda;
+    background-color: #155724; /* Dark green background */
+    border-color: #c3e6cb;
+}
+
+/* Ensure EPUB content also respects dark mode, might need !important for inline styles from EPUB */
+body.dark-mode .epub-content img {
+    filter: invert(1) hue-rotate(180deg); /* Basic image inversion for dark mode */
+}
+/* Make sure specific epub elements like headers, paragraphs, lists within .epub-content are styled */
+body.dark-mode .epub-content h1,
+body.dark-mode .epub-content h2,
+body.dark-mode .epub-content h3,
+body.dark-mode .epub-content h4,
+body.dark-mode .epub-content h5,
+body.dark-mode .epub-content h6 {
+    color: #f5f5f5 !important;
+}
+body.dark-mode .epub-content p,
+body.dark-mode .epub-content div,
+body.dark-mode .epub-content span,
+body.dark-mode .epub-content li,
+body.dark-mode .epub-content blockquote {
+    color: #e0e0e0 !important;
+    background-color: transparent !important; /* Override any inline light backgrounds */
+}
+body.dark-mode .epub-content a {
+    color: #8ab4f8 !important;
+}
+body.dark-mode .epub-content table,
+body.dark-mode .epub-content th,
+body.dark-mode .epub-content td {
+    border-color: #555 !important;
+    color: #e0e0e0 !important;
+}
+body.dark-mode .epub-content th {
+    background-color: #333 !important;
+}
+body.dark-mode .epub-header {
+    border-bottom-color: #444;
+}
+
+/* Ensure custom font is also dark mode aware if colors were specific */
+body.dark-mode.custom-font .file-content,
+body.dark-mode.custom-font .markdown-content,
+body.dark-mode.custom-font .txt-content,
+body.dark-mode.custom-font .epub-content,
+body.dark-mode.custom-font .html-viewer,
+body.dark-mode.custom-font .content-area,
+body.dark-mode.custom-font p,
+body.dark-mode.custom-font div,
+body.dark-mode.custom-font span {
+    color: #e0e0e0; /* Ensure custom font text is also light in dark mode */
+}
+
+body.dark-mode.custom-font h1,
+body.dark-mode.custom-font h2,
+body.dark-mode.custom-font h3,
+body.dark-mode.custom-font h4,
+body.dark-mode.custom-font h5,
+body.dark-mode.custom-font h6 {
+    color: #f5f5f5; /* Ensure custom font headers are also light in dark mode */
+}
+/* Add more specific dark mode styles as needed */
+#theme-toggle-btn {
+    border-radius: 5px; /* Example of specific button styling */
+}
