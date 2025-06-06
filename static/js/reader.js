@@ -5,7 +5,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const contentContainer = document.getElementById('content-container'); // For chunked content
     const fullContentDataSource = document.getElementById('full-content-data');
     const staticFileContent = document.querySelector('.code-block code') || document.querySelector('pre.file-content');
-    let activeContentElement = contentContainer || staticFileContent;
+
+    // 使用模板中设置的activeContentElement，如果没有则使用默认值
+    let activeContentElement = window.activeContentElement || contentContainer || staticFileContent;
 
     const progressFill = document.getElementById('progress-fill');
     const progressText = document.getElementById('progress-text');
@@ -32,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Content Chunking Logic (existing) ---
     let fullContent = '';
-    let contentType = '';
+    let contentType = window.contentType || ''; // 使用模板中设置的contentType
     let chunks = [];
     let currentChunkToRender = 0;
     const LINES_PER_CHUNK_TXT = 50;
@@ -42,9 +44,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (fullContentDataSource && contentContainer) {
         fullContent = fullContentDataSource.textContent.trim();
-        if (contentContainer.classList.contains('markdown-content')) contentType = 'markdown';
-        else if (contentContainer.classList.contains('txt-content')) contentType = 'txt';
-        else if (contentContainer.classList.contains('file-content')) contentType = 'plain';
+        // 如果模板没有设置contentType，则从CSS类推断
+        if (!contentType) {
+            if (contentContainer.classList.contains('markdown-content')) contentType = 'markdown';
+            else if (contentContainer.classList.contains('txt-content')) contentType = 'txt';
+            else if (contentContainer.classList.contains('file-content')) contentType = 'plain';
+        }
     }
     
     function chunkContent() { /* ... existing chunkContent ... */
@@ -211,6 +216,29 @@ document.addEventListener('DOMContentLoaded', function() {
         const endOffset = startOffset + selectedText.length;
 
         return { type: 'txt-char-offset', startOffset, endOffset, selectedText };
+    }
+
+    function getPathTo(node) {
+        // 生成节点的简单路径
+        if (!node || node === document) return '';
+
+        let path = '';
+        let current = node;
+
+        while (current && current !== document) {
+            if (current.id) {
+                path = `id("${current.id}")` + (path ? '/' + path : '');
+                break;
+            } else if (current.tagName) {
+                let tagName = current.tagName.toLowerCase();
+                let siblings = Array.from(current.parentNode?.children || []).filter(el => el.tagName === current.tagName);
+                let index = siblings.indexOf(current) + 1;
+                path = `${tagName}[${index}]` + (path ? '/' + path : '');
+            }
+            current = current.parentNode;
+        }
+
+        return path;
     }
 
     function getMDSelectionRangeData(range) {
@@ -523,11 +551,69 @@ document.addEventListener('DOMContentLoaded', function() {
         document.addEventListener('mouseup', function() { isDragging = false; });
     }
     
-    // Bookmark functions (getBookmarkKey, getCurrentScrollProgress, saveBookmark, loadBookmark, hasBookmark) remain largely the same
-    // But loadBookmark should perhaps trigger re-application of annotations if content is chunked and not all visible
-    if (bookmarkBtn) { /* ... existing bookmarkBtn logic ... */
+    // 书签功能实现
+    function getBookmarkKey() {
+        return 'bookmark_' + btoa(window.location.href);
+    }
+
+    function getCurrentScrollProgress() {
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        return scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+    }
+
+    function saveBookmark() {
+        const bookmarkData = {
+            scrollPosition: window.pageYOffset,
+            progress: getCurrentScrollProgress(),
+            timestamp: new Date().toISOString(),
+            url: window.location.href
+        };
+        localStorage.setItem(getBookmarkKey(), JSON.stringify(bookmarkData));
+
+        // 更新书签按钮状态
+        if (bookmarkBtn) {
+            bookmarkBtn.textContent = '🔖 已保存书签';
+            bookmarkBtn.style.backgroundColor = '#4CAF50';
+            setTimeout(() => {
+                bookmarkBtn.textContent = '🔖 书签';
+                bookmarkBtn.style.backgroundColor = '';
+            }, 2000);
+        }
+
+        console.log('书签已保存:', bookmarkData);
+    }
+
+    function loadBookmark() {
+        const saved = localStorage.getItem(getBookmarkKey());
+        if (saved) {
+            try {
+                const bookmarkData = JSON.parse(saved);
+                window.scrollTo(0, bookmarkData.scrollPosition);
+                console.log('书签已加载:', bookmarkData);
+                return true;
+            } catch (e) {
+                console.error('加载书签失败:', e);
+                return false;
+            }
+        }
+        return false;
+    }
+
+    function hasBookmark() {
+        return localStorage.getItem(getBookmarkKey()) !== null;
+    }
+
+    // 书签按钮事件
+    if (bookmarkBtn) {
         bookmarkBtn.addEventListener('click', function() {
-            if (hasBookmark()) { if (!loadBookmark() && confirm('是否更新书签到当前位置？')) saveBookmark(); } else saveBookmark();
+            if (hasBookmark()) {
+                if (!loadBookmark() && confirm('是否更新书签到当前位置？')) {
+                    saveBookmark();
+                }
+            } else {
+                saveBookmark();
+            }
         });
     }
     if (bookmarkSaveBtn) bookmarkSaveBtn.addEventListener('click', saveBookmark);
@@ -545,6 +631,26 @@ document.addEventListener('DOMContentLoaded', function() {
         if (progressFill) progressFill.style.width = `${progress}%`;
         if (progressText) progressText.textContent = `${Math.round(progress)}%`;
     }
+
+    // 滚动处理函数
+    function handleScroll() {
+        updateProgress();
+
+        // 检查是否需要加载更多内容块
+        if (chunks.length > currentChunkToRender) {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const scrollHeight = document.documentElement.scrollHeight;
+            const clientHeight = document.documentElement.clientHeight;
+
+            // 当滚动到接近底部时加载下一块内容
+            if (scrollTop + clientHeight >= scrollHeight - SCROLL_THRESHOLD) {
+                renderNextChunk();
+            }
+        }
+    }
+
+    // 节流的滚动处理器
+    const throttledScrollHandler = throttle(handleScroll, 100);
     
     window.addEventListener('scroll', throttledScrollHandler); // Combined scroll handler
     document.addEventListener('keydown', function(e) { /* ... existing keydown logic ... */

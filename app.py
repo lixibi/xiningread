@@ -21,8 +21,10 @@ try:
     import ebooklib
     from ebooklib import epub
     EPUB_SUPPORT = True
-except ImportError:
+    print(f"EPUB support loaded successfully. ebooklib available.")
+except ImportError as e:
     EPUB_SUPPORT = False
+    print(f"EPUB support failed to load: {e}")
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -141,6 +143,7 @@ def get_file_info(filepath):
             'name': os.path.basename(filepath),
             'size': 'Unknown',
             'is_text': False,
+            'is_readable_in_app': False,
             'type_label': 'ERROR'
         }
 
@@ -326,7 +329,7 @@ def process_chinese_text(text):
     return '\n\n'.join(processed_paragraphs)
 
 def parse_epub(file_path):
-    """解析EPUB文件"""
+    """解析EPUB文件 - 改进版本，支持更好的排版和内容处理"""
     if not EPUB_SUPPORT:
         return None, "EPUB支持库未安装"
 
@@ -355,24 +358,63 @@ def parse_epub(file_path):
         language = get_meta_value(book.get_metadata('DC', 'language'))
         isbn = get_meta_value(book.get_metadata('DC', 'identifier'))
 
+        # 获取目录信息
+        toc_items = []
+        try:
+            for toc_item in book.toc:
+                if hasattr(toc_item, 'title') and hasattr(toc_item, 'href'):
+                    toc_items.append({
+                        'title': toc_item.title,
+                        'href': toc_item.href
+                    })
+        except:
+            pass  # 如果获取目录失败，继续处理
 
-        # 提取文本内容
+        # 按照spine顺序提取内容
         content_parts = []
 
-        for item in book.get_items():
-            if item.get_type() == ebooklib.ITEM_DOCUMENT:
-                # 获取HTML内容并简单处理
-                html_content = item.get_content().decode('utf-8')
+        try:
+            # 尝试按spine顺序处理
+            spine_items = book.spine
+            for item_id, _ in spine_items:
+                # 查找对应的item
+                item = None
+                for book_item in book.get_items():
+                    if book_item.id == item_id:
+                        item = book_item
+                        break
 
-                # 简单的HTML标签清理（保留基本结构）
-                import re
-                # 移除script和style标签
-                html_content = re.sub(r'<script[^>]*>.*?</script>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
-                html_content = re.sub(r'<style[^>]*>.*?</style>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+                if item and item.get_type() == ebooklib.ITEM_DOCUMENT:
+                    try:
+                        # 获取HTML内容
+                        html_content = item.get_content().decode('utf-8')
 
-                content_parts.append(html_content)
+                        # 改进的HTML处理
+                        html_content = clean_epub_html(html_content)
 
-        full_content = '\n'.join(content_parts)
+                        if html_content.strip():  # 只添加非空内容
+                            content_parts.append(html_content)
+
+                    except Exception as e:
+                        logger.warning(f"Failed to process EPUB item {item_id}: {e}")
+                        continue
+        except Exception as e:
+            logger.warning(f"Failed to process spine: {e}")
+
+        # 如果spine方法失败，回退到原来的方法
+        if not content_parts:
+            for item in book.get_items():
+                if item.get_type() == ebooklib.ITEM_DOCUMENT:
+                    try:
+                        html_content = item.get_content().decode('utf-8')
+                        html_content = clean_epub_html(html_content)
+                        if html_content.strip():
+                            content_parts.append(html_content)
+                    except Exception as e:
+                        logger.warning(f"Failed to process EPUB item: {e}")
+                        continue
+
+        full_content = '\n\n'.join(content_parts)
 
         return {
             'title': title,
@@ -381,11 +423,37 @@ def parse_epub(file_path):
             'publication_date': publication_date,
             'language': language,
             'isbn': isbn,
-            'content': full_content
+            'content': full_content,
+            'toc': toc_items
         }, None
 
     except Exception as e:
         return None, f"解析EPUB文件失败: {str(e)}"
+
+def clean_epub_html(html_content):
+    """清理和改进EPUB HTML内容"""
+    import re
+
+    # 移除XML声明和DOCTYPE
+    html_content = re.sub(r'<\?xml[^>]*\?>', '', html_content)
+    html_content = re.sub(r'<!DOCTYPE[^>]*>', '', html_content)
+
+    # 移除script和style标签
+    html_content = re.sub(r'<script[^>]*>.*?</script>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+    html_content = re.sub(r'<style[^>]*>.*?</style>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+
+    # 移除html和body标签，保留内容
+    html_content = re.sub(r'<html[^>]*>', '', html_content, flags=re.IGNORECASE)
+    html_content = re.sub(r'</html>', '', html_content, flags=re.IGNORECASE)
+    html_content = re.sub(r'<body[^>]*>', '', html_content, flags=re.IGNORECASE)
+    html_content = re.sub(r'</body>', '', html_content, flags=re.IGNORECASE)
+    html_content = re.sub(r'<head[^>]*>.*?</head>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+
+    # 清理多余的空白
+    html_content = re.sub(r'\n\s*\n', '\n\n', html_content)
+    html_content = html_content.strip()
+
+    return html_content
 
 @app.route('/')
 def index():
@@ -430,7 +498,7 @@ def index():
             elif os.path.isfile(item_path):
                 file_info = get_file_info(item_path)
                 # Step 3: Apply supported type filter
-                if file_info['is_text']:
+                if file_info['is_readable_in_app']:
                     file_info['path'] = relative_item_path
                     all_files_in_dir.append(file_info)
         

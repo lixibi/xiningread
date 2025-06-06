@@ -68,11 +68,21 @@
 
 {% block scripts %}
 {{ super() }} {# Ensures scripts from base.html like recent_reads.js are loaded first #}
+<script>
+// 设置内容容器，供reader.js使用
+window.activeContentElement = document.getElementById('content-container');
+window.contentType = '{{ file_type|e|safe }}';
+</script>
 <script src="{{ url_for('static', filename='js/reader.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const filePath = "{{ file_path|e|safe }}"; // file_path from backend
     const originalFilename = "{{ filename|e|safe }}"; // filename from backend is original
+
+    // 确保activeContentElement在DOM加载后正确设置
+    if (!window.activeContentElement) {
+        window.activeContentElement = document.getElementById('content-container');
+    }
 
     // Update displayed title using metadataManager
     const currentFileSpan = document.querySelector('.reader-nav .current-file');

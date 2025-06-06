@@ -48,5 +48,10 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+// 设置HTML阅读器的内容容器，供reader.js使用
+window.activeContentElement = document.getElementById('html-content');
+window.contentType = 'html';
+</script>
 <script src="{{ url_for('static', filename='js/reader.js') }}"></script>
 {% endblock %}

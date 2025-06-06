@@ -13,14 +13,17 @@
 {% endblock %}
 
 {% block content %}
-<div class="epub-reader-container">
-    <div class="epub-controls">
+<div class="reader-container epub-reader-container" id="reader-container">
+    <div class="reader-controls" id="reader-controls">
         <button class="control-toggle" id="control-toggle">⚙️ 阅读设置</button>
         <div class="control-buttons" id="control-buttons">
             <button id="font-smaller" class="btn btn-control">🔤- 缩小字体</button>
             <button id="font-larger" class="btn btn-control">🔤+ 放大字体</button>
             <button id="fullscreen-browser" class="btn btn-control">🔳 浏览器全屏</button>
             <button id="bookmark-btn" class="btn btn-control">🔖 书签</button>
+            {% if epub_data.toc and epub_data.toc|length > 0 %}
+            <button id="toc-toggle" class="btn btn-control">📋 目录</button>
+            {% endif %}
         </div>
     </div>
 
@@ -43,9 +46,20 @@
                 {% endif %}
             </div>
 
-            <div class="epub-content" id="epub-content">
+            <div class="epub-content content-container" id="epub-content">
                 {{ epub_data.content|safe }}
             </div>
+
+            {% if epub_data.toc and epub_data.toc|length > 0 %}
+            <div class="epub-toc" id="epub-toc" style="display: none;">
+                <h3>📚 目录</h3>
+                <ul>
+                {% for toc_item in epub_data.toc %}
+                    <li><a href="#" onclick="scrollToSection('{{ toc_item.title|e }}')">{{ toc_item.title }}</a></li>
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
         {% elif error %}
             <div class="epub-error">
                 <h3>❌ EPUB解析失败</h3>
@@ -97,10 +111,19 @@
 {% block scripts %}
 {{ super() }} {# Ensures scripts from base.html like recent_reads.js are loaded first #}
 <script>
+// 设置EPUB阅读器的内容容器，供reader.js使用
+window.activeContentElement = document.getElementById('epub-content');
+window.contentType = 'epub';
+
 document.addEventListener('DOMContentLoaded', function() {
     const filePath = "{{ file_path|e|safe }}";
     const serverFilename = "{{ filename|e|safe }}"; // This is os.path.basename(file_path)
     const epubInternalTitle = "{{ epub_data.title|e|safe if epub_data and epub_data.title else '' }}";
+
+    // 确保activeContentElement在DOM加载后正确设置
+    if (!window.activeContentElement) {
+        window.activeContentElement = document.getElementById('epub-content');
+    }
 
     // Determine the best original name for display and recent reads
     const originalNameToUse = epubInternalTitle || serverFilename;
@@ -169,9 +192,60 @@ document.addEventListener('DOMContentLoaded', function() {
             if (element.tagName === 'P') {
                 element.style.textIndent = '2em';
                 element.style.margin = '1em 0';
+                element.style.lineHeight = '1.8';
+            }
+
+            // 改进标题样式
+            if (['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(element.tagName)) {
+                element.style.margin = '1.5em 0 1em 0';
+                element.style.fontWeight = 'bold';
+                element.style.textIndent = '0';
+            }
+        });
+
+        // 清理多余的空白元素
+        cleanEmptyElements(epubContent);
+    }
+
+    // 目录切换功能
+    const tocToggle = document.getElementById('toc-toggle');
+    const tocDiv = document.getElementById('epub-toc');
+    if (tocToggle && tocDiv) {
+        tocToggle.addEventListener('click', function() {
+            if (tocDiv.style.display === 'none') {
+                tocDiv.style.display = 'block';
+                tocToggle.textContent = '📋 隐藏目录';
+            } else {
+                tocDiv.style.display = 'none';
+                tocToggle.textContent = '📋 目录';
             }
         });
     }
 });
+
+// 清理空白元素的函数
+function cleanEmptyElements(container) {
+    const elements = container.querySelectorAll('*');
+    elements.forEach(element => {
+        if (element.textContent.trim() === '' && element.children.length === 0) {
+            element.remove();
+        }
+    });
+}
+
+// 滚动到指定章节的函数
+function scrollToSection(title) {
+    const epubContent = document.getElementById('epub-content');
+    if (!epubContent) return;
+
+    // 查找包含标题的元素
+    const elements = epubContent.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    for (let element of elements) {
+        if (element.textContent.includes(title) || title.includes(element.textContent.trim())) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            break;
+        }
+    }
+}
 </script>
 {% endblock %}

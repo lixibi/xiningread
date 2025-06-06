@@ -691,6 +691,56 @@ body.custom-font h6 {
     margin-bottom: 20px;
 }
 
+/* EPUB目录样式 */
+.epub-toc {
+    background-color: #f8f8f8;
+    border: 2px solid #000;
+    padding: 20px;
+    margin: 20px 0;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.epub-toc h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 20px;
+    color: #000;
+    border-bottom: 2px solid #000;
+    padding-bottom: 5px;
+}
+
+.epub-toc ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.epub-toc li {
+    margin: 8px 0;
+    padding: 5px 0;
+    border-bottom: 1px solid #ddd;
+}
+
+.epub-toc li:last-child {
+    border-bottom: none;
+}
+
+.epub-toc a {
+    color: #000;
+    text-decoration: none;
+    font-size: 16px;
+    line-height: 1.5;
+    display: block;
+    padding: 5px 0;
+}
+
+.epub-toc a:hover {
+    background-color: #e0e0e0;
+    text-decoration: underline;
+}
+
 /* HTML阅读器样式 */
 .html-reader-container {
     max-width: 100%;
@@ -1267,6 +1317,30 @@ body.dark-mode .epub-content th {
 }
 body.dark-mode .epub-header {
     border-bottom-color: #444;
+}
+
+/* EPUB目录暗色模式 */
+body.dark-mode .epub-toc {
+    background-color: #333;
+    border-color: #555;
+}
+
+body.dark-mode .epub-toc h3 {
+    color: #f5f5f5;
+    border-bottom-color: #555;
+}
+
+body.dark-mode .epub-toc li {
+    border-bottom-color: #555;
+}
+
+body.dark-mode .epub-toc a {
+    color: #e0e0e0;
+}
+
+body.dark-mode .epub-toc a:hover {
+    background-color: #444;
+    color: #fff;
 }
 
 /* Ensure custom font is also dark mode aware if colors were specific */

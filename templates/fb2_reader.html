@@ -70,14 +70,19 @@
 
 {% block scripts %}
 {{ super() }} {# Includes base scripts like recent_reads.js, metadata_editor.js, annotations.js, theme.js #}
-{# reader.js is also included via super() if it's in base.html, or linked directly if not. #}
-{# Assuming reader.js is part of base.html scripts or will be added to this block by super() #}
-{# If reader.js is not in base, it needs to be added: #}
-{# <script src="{{ url_for('static', filename='js/reader.js') }}"></script> #}
-
+<script>
+// 设置FB2阅读器的内容容器，供reader.js使用
+window.activeContentElement = document.getElementById('content-container');
+window.contentType = 'fb2';
+</script>
+<script src="{{ url_for('static', filename='js/reader.js') }}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // 确保activeContentElement在DOM加载后正确设置
+    if (!window.activeContentElement) {
+        window.activeContentElement = document.getElementById('content-container');
+    }
     const filePath = "{{ file_path|e|safe }}";
     const originalFilename = "{{ filename|e|safe }}"; // This is os.path.basename(file_path)
     const fb2BookTitle = "{{ fb2_data.metadata.book_title|e|safe }}";
