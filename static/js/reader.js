@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 使用模板中设置的activeContentElement，如果没有则使用默认值
     let activeContentElement = window.activeContentElement || contentContainer || staticFileContent;
+    // console.log("activeContentElement:", activeContentElement); // Removed
 
     const progressFill = document.getElementById('progress-fill');
     const progressText = document.getElementById('progress-text');
@@ -94,6 +95,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         currentChunkToRender++;
         applyCurrentSettingsToElement(contentContainer);
+        console.log(`Chunk ${currentChunkToRender-1} rendered. Applied font size ${currentFontSize}px to contentContainer.`);
+        if (contentContainer) {
+            console.log(`contentContainer current inline font-size: ${contentContainer.style.fontSize}`);
+        }
         updateProgress();
         // Potentially apply annotations to the newly rendered chunk if feasible
         // For simplicity, full re-application might happen after all chunks or on demand
@@ -517,20 +522,53 @@ document.addEventListener('DOMContentLoaded', function() {
     // ... (Most of the existing code from reader.js, adapted to use activeContentElement where needed) ...
 
     function applyCurrentSettingsToElement(element) { // Renamed for clarity
+        // console.log("applyCurrentSettingsToElement called with:", element); // Removed
         if (element) {
-            element.style.fontSize = currentFontSize + 'px';
+            element.style.setProperty('font-size', currentFontSize + 'px', 'important');
         }
     }
     if (fontSmallerBtn && fontLargerBtn && activeContentElement) {
-        fontSmallerBtn.addEventListener('click', () => { if (currentFontSize > 12) { currentFontSize -= 2; applyCurrentSettingsToElement(activeContentElement); saveSettings(); }});
-        fontLargerBtn.addEventListener('click', () => { if (currentFontSize < 32) { currentFontSize += 2; applyCurrentSettingsToElement(activeContentElement); saveSettings(); }});
+        fontSmallerBtn.addEventListener('click', () => {
+            if (currentFontSize > 12) {
+                currentFontSize -= 2;
+                applyCurrentSettingsToElement(activeContentElement);
+                console.log(`Font size changed to ${currentFontSize}px by button click. activeContentElement:`, activeContentElement);
+                if (activeContentElement) {
+                     console.log(`activeContentElement inline font-size after button click: ${activeContentElement.style.fontSize}`);
+                }
+                saveSettings();
+            }
+        });
+        fontLargerBtn.addEventListener('click', () => {
+            if (currentFontSize < 32) {
+                currentFontSize += 2;
+                applyCurrentSettingsToElement(activeContentElement);
+                console.log(`Font size changed to ${currentFontSize}px by button click. activeContentElement:`, activeContentElement);
+                if (activeContentElement) {
+                     console.log(`activeContentElement inline font-size after button click: ${activeContentElement.style.fontSize}`);
+                }
+                saveSettings();
+            }
+        });
     }
-    if (fullscreenBtn) { /* ... existing fullscreen logic ... */
+    if (fullscreenBtn) {
         fullscreenBtn.addEventListener('click', function() {
-            if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen();
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                document.documentElement.requestFullscreen();
+            }
         });
         document.addEventListener('fullscreenchange', function() {
+            console.log('Fullscreen state changed. document.fullscreenElement:', document.fullscreenElement); // Keep this log for now
             fullscreenBtn.textContent = document.fullscreenElement ? '🔲 退出全屏' : '🔳 浏览器全屏';
+            if (document.fullscreenElement) {
+                document.body.classList.add('fullscreen-mode');
+                console.log('Added fullscreen-mode class to body.'); // Keep this
+            } else {
+                document.body.classList.remove('fullscreen-mode');
+                console.log('Removed fullscreen-mode class from body.'); // Keep this
+            }
         });
     }
     if (controlToggle && readerControls) { /* ... existing control toggle logic ... */
@@ -567,7 +605,8 @@ document.addEventListener('DOMContentLoaded', function() {
             scrollPosition: window.pageYOffset,
             progress: getCurrentScrollProgress(),
             timestamp: new Date().toISOString(),
-            url: window.location.href
+            url: window.location.href,
+            fontSize: currentFontSize // Add this line
         };
         localStorage.setItem(getBookmarkKey(), JSON.stringify(bookmarkData));
 
@@ -581,7 +620,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 2000);
         }
 
-        console.log('书签已保存:', bookmarkData);
+        console.log('书签已保存:', bookmarkData); // Restored original log
     }
 
     function loadBookmark() {
@@ -589,11 +628,22 @@ document.addEventListener('DOMContentLoaded', function() {
         if (saved) {
             try {
                 const bookmarkData = JSON.parse(saved);
-                window.scrollTo(0, bookmarkData.scrollPosition);
-                console.log('书签已加载:', bookmarkData);
+                // console.log('Parsed bookmark data:', bookmarkData); // Removed
+
+                setTimeout(() => { // Add setTimeout
+                    window.scrollTo(0, bookmarkData.scrollPosition);
+                    // console.log('Scrolled to bookmarked position:', bookmarkData.scrollPosition); // Removed
+
+                    if (bookmarkData.fontSize && currentFontSize !== bookmarkData.fontSize) {
+                        // console.log('Applying bookmarked font size:', bookmarkData.fontSize); // Removed
+                        currentFontSize = bookmarkData.fontSize;
+                        applyCurrentSettingsToElement(activeContentElement);
+                        saveSettings(); // Also save this newly applied font size as current setting
+                    }
+                }, 250); // 250ms delay
                 return true;
             } catch (e) {
-                console.error('加载书签失败:', e);
+                console.error('加载书签失败:', e); // Original error log kept
                 return false;
             }
         }
