@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 使用模板中设置的activeContentElement，如果没有则使用默认值
     let activeContentElement = window.activeContentElement || contentContainer || staticFileContent;
-    // console.log("activeContentElement:", activeContentElement); // Removed
+    console.log("Initial activeContentElement:", activeContentElement, "window.activeContentElement:", window.activeContentElement, "contentType:", window.contentType); // Added initial log
 
     const progressFill = document.getElementById('progress-fill');
     const progressText = document.getElementById('progress-text');
@@ -543,47 +543,59 @@ document.addEventListener('DOMContentLoaded', function() {
     // Ensure they use `activeContentElement` for styling if applicable.
     // ... (Most of the existing code from reader.js, adapted to use activeContentElement where needed) ...
 
-    function applyCurrentSettingsToElement(element) { // Renamed for clarity
-        // console.log("applyCurrentSettingsToElement called with:", element); // Removed
+    function applyCurrentSettingsToElement(element) {
+        console.log("applyCurrentSettingsToElement called with:", element, "Current font size:", currentFontSize, "ContentType:", contentType); // Added log
         if (element) {
             element.style.setProperty('font-size', currentFontSize + 'px', 'important');
-
-            // 特别处理EPUB内容
-            if (contentType === 'epub') {
-                // 确保EPUB内容的所有子元素也应用字体大小
-                const allElements = element.querySelectorAll('*');
-                allElements.forEach(child => {
-                    // 只对文本内容元素应用字体大小，避免影响布局元素
-                    if (['P', 'DIV', 'SPAN', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'TD', 'TH'].includes(child.tagName)) {
-                        child.style.setProperty('font-size', currentFontSize + 'px', 'important');
-                    }
-                });
+            console.log(`Applied font-size ${currentFontSize}px to element:`, element);
+            if (element.style.fontSize) {
+                console.log(`Element's inline font-size after setProperty: ${element.style.fontSize}`);
+            } else {
+                console.log(`Element's inline font-size is not set directly after setProperty (might be in CSSStyleDeclaration).`);
             }
+
+            // For EPUB, applying to the main container (#epub-content) should be enough if children inherit.
+            // The '!important' flag should help override internal EPUB styles.
+            // No longer iterating child elements for EPUBs, relying on inheritance from the main 'element'.
+            // If specific EPUB elements still don't resize, it might be due to very specific CSS within the EPUB
+            // or elements not being children of the 'element' passed to this function.
+        } else {
+            console.warn("applyCurrentSettingsToElement: element is null or undefined.");
         }
     }
 
     // 将函数暴露到全局作用域，以便模板中可以访问
     window.applyCurrentSettingsToElement = applyCurrentSettingsToElement;
     window.updateProgress = updateProgress;
-    if (fontSmallerBtn && fontLargerBtn && activeContentElement) {
+    if (fontSmallerBtn && fontLargerBtn) { // Check for activeContentElement inside event listener
         fontSmallerBtn.addEventListener('click', () => {
+            console.log("Font-smaller button clicked. Current activeContentElement:", activeContentElement, "Current font size:", currentFontSize);
+            if (!activeContentElement) {
+                console.error("Cannot change font size: activeContentElement is null.");
+                return;
+            }
             if (currentFontSize > 12) {
                 currentFontSize -= 2;
                 applyCurrentSettingsToElement(activeContentElement);
-                console.log(`Font size changed to ${currentFontSize}px by button click. activeContentElement:`, activeContentElement);
-                if (activeContentElement) {
-                     console.log(`activeContentElement inline font-size after button click: ${activeContentElement.style.fontSize}`);
+                console.log(`Font size changed to ${currentFontSize}px. Target element:`, activeContentElement);
+                if (activeContentElement && activeContentElement.style) {
+                     console.log(`Target element inline font-size after change: ${activeContentElement.style.fontSize}`);
                 }
                 saveSettings();
             }
         });
         fontLargerBtn.addEventListener('click', () => {
+            console.log("Font-larger button clicked. Current activeContentElement:", activeContentElement, "Current font size:", currentFontSize);
+            if (!activeContentElement) {
+                console.error("Cannot change font size: activeContentElement is null.");
+                return;
+            }
             if (currentFontSize < 32) {
                 currentFontSize += 2;
                 applyCurrentSettingsToElement(activeContentElement);
-                console.log(`Font size changed to ${currentFontSize}px by button click. activeContentElement:`, activeContentElement);
-                if (activeContentElement) {
-                     console.log(`activeContentElement inline font-size after button click: ${activeContentElement.style.fontSize}`);
+                console.log(`Font size changed to ${currentFontSize}px. Target element:`, activeContentElement);
+                if (activeContentElement && activeContentElement.style) {
+                     console.log(`Target element inline font-size after change: ${activeContentElement.style.fontSize}`);
                 }
                 saveSettings();
             }
@@ -719,49 +731,71 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function saveBookmark() {
+        const key = getBookmarkKey();
         const bookmarkData = {
             scrollPosition: window.pageYOffset,
             progress: getCurrentScrollProgress(),
             timestamp: new Date().toISOString(),
             url: window.location.href,
-            fontSize: currentFontSize // Add this line
+            fontSize: currentFontSize
         };
-        localStorage.setItem(getBookmarkKey(), JSON.stringify(bookmarkData));
+        console.log(`[saveBookmark] Preparing to save bookmark for key "${key}":`, bookmarkData);
+        try {
+            localStorage.setItem(key, JSON.stringify(bookmarkData));
+            console.log(`[saveBookmark] Bookmark saved successfully for key "${key}".`);
 
-        // 更新书签按钮状态
-        if (bookmarkBtn) {
-            bookmarkBtn.textContent = '🔖 已保存书签';
-            bookmarkBtn.style.backgroundColor = '#4CAF50';
-            setTimeout(() => {
-                bookmarkBtn.textContent = '🔖 书签';
-                bookmarkBtn.style.backgroundColor = '';
-            }, 2000);
+            // 更新书签按钮状态
+            if (bookmarkBtn) {
+                bookmarkBtn.textContent = '🔖 已保存书签';
+                bookmarkBtn.style.backgroundColor = '#4CAF50';
+                setTimeout(() => {
+                    bookmarkBtn.textContent = '🔖 书签';
+                    bookmarkBtn.style.backgroundColor = '';
+                }, 2000);
+            }
+        } catch (e) {
+            console.error(`[saveBookmark] Error saving bookmark for key "${key}":`, e);
         }
-
-        console.log('书签已保存:', bookmarkData); // Restored original log
     }
 
     function loadBookmark() {
-        const saved = localStorage.getItem(getBookmarkKey());
+        const key = getBookmarkKey();
+        const saved = localStorage.getItem(key);
+        console.log(`[loadBookmark] Attempting to load bookmark for key "${key}". Saved data:`, saved ? "Found" : "Not found");
+
         if (saved) {
             try {
                 const bookmarkData = JSON.parse(saved);
-                // console.log('Parsed bookmark data:', bookmarkData); // Removed
+                console.log('[loadBookmark] Parsed bookmark data:', bookmarkData);
+                console.log(`[loadBookmark] Current activeContentElement before timeout:`, activeContentElement);
+                console.log(`[loadBookmark] Document scrollHeight before timeout: ${document.documentElement.scrollHeight}`);
 
-                setTimeout(() => { // Add setTimeout
+
+                setTimeout(() => {
+                    console.log(`[loadBookmark internal] Executing setTimeout. Target scrollPosition: ${bookmarkData.scrollPosition}, Target fontSize: ${bookmarkData.fontSize}`);
+                    console.log(`[loadBookmark internal] activeContentElement inside timeout:`, activeContentElement);
+                    console.log(`[loadBookmark internal] Document scrollHeight inside timeout (before scroll): ${document.documentElement.scrollHeight}`);
+
                     window.scrollTo(0, bookmarkData.scrollPosition);
-                    // console.log('Scrolled to bookmarked position:', bookmarkData.scrollPosition); // Removed
+                    console.log(`[loadBookmark internal] Scrolled to: ${bookmarkData.scrollPosition}. Current window.pageYOffset: ${window.pageYOffset}`);
 
                     if (bookmarkData.fontSize && currentFontSize !== bookmarkData.fontSize) {
-                        // console.log('Applying bookmarked font size:', bookmarkData.fontSize); // Removed
+                        console.log(`[loadBookmark internal] Restoring font size from bookmark: ${bookmarkData.fontSize}. Current font size: ${currentFontSize}`);
                         currentFontSize = bookmarkData.fontSize;
-                        applyCurrentSettingsToElement(activeContentElement);
+                        if (activeContentElement) {
+                            applyCurrentSettingsToElement(activeContentElement);
+                            console.log(`[loadBookmark internal] Applied font size ${currentFontSize} to activeContentElement.`);
+                        } else {
+                            console.warn('[loadBookmark internal] activeContentElement is null, cannot apply bookmarked font size.');
+                        }
                         saveSettings(); // Also save this newly applied font size as current setting
+                    } else if (bookmarkData.fontSize) {
+                        console.log(`[loadBookmark internal] Font size in bookmark (${bookmarkData.fontSize}) is same as current (${currentFontSize}). No change needed.`);
                     }
                 }, 250); // 250ms delay
                 return true;
             } catch (e) {
-                console.error('加载书签失败:', e); // Original error log kept
+                console.error(`[loadBookmark] Error loading or applying bookmark for key "${key}":`, e);
                 return false;
             }
         }
@@ -769,7 +803,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function hasBookmark() {
-        return localStorage.getItem(getBookmarkKey()) !== null;
+        const key = getBookmarkKey();
+        const has = localStorage.getItem(key) !== null;
+        console.log(`[hasBookmark] Checking for key "${key}". Found: ${has}`);
+        return has;
     }
 
     // 书签按钮事件
@@ -863,21 +900,32 @@ document.addEventListener('DOMContentLoaded', function() {
     function saveSettings() { /* ... existing saveSettings ... */
         localStorage.setItem('readerSettings', JSON.stringify({ fontSize: currentFontSize, controlsCollapsed: isControlsCollapsed }));
     }
-    function loadSettings() { /* ... existing loadSettings, ensure activeContentElement is styled ... */
+    function loadSettings() {
         const saved = localStorage.getItem('readerSettings');
+        console.log("loadSettings called. current activeContentElement:", activeContentElement, "contentType:", contentType);
         if (saved) {
             try {
                 const settings = JSON.parse(saved);
                 currentFontSize = settings.fontSize || 18;
                 isControlsCollapsed = settings.controlsCollapsed || false;
-                if (activeContentElement) applyCurrentSettingsToElement(activeContentElement); // Apply to currently relevant content area
+                console.log("Loaded settings: fontSize =", currentFontSize, "controlsCollapsed =", isControlsCollapsed);
+                if (activeContentElement) {
+                    applyCurrentSettingsToElement(activeContentElement);
+                } else {
+                    console.warn("loadSettings: activeContentElement is null, cannot apply font size yet.");
+                }
                 if (readerControls && controlToggle) {
                     readerControls.classList.toggle('collapsed', isControlsCollapsed);
                     controlToggle.textContent = isControlsCollapsed ? '⚙️ 展开设置' : '⚙️ 收起设置';
                 }
             } catch (e) { console.error('Error loading reader settings:', e); }
         } else {
-             if (activeContentElement) applyCurrentSettingsToElement(activeContentElement); // Apply default
+            console.log("No saved settings found, applying default font size.");
+            if (activeContentElement) {
+                applyCurrentSettingsToElement(activeContentElement); // Apply default
+            } else {
+                console.warn("loadSettings: activeContentElement is null, cannot apply default font size yet.");
+            }
         }
     }
     function saveReadingPosition() { /* ... existing saveReadingPosition ... */
@@ -917,22 +965,41 @@ document.addEventListener('DOMContentLoaded', function() {
     document.body.appendChild(helpText);
     let helpVisible = false; // Already declared by keydown listener for F1
 
-    if (activeContentElement) applyCurrentSettingsToElement(activeContentElement);
+    if (activeContentElement) {
+        applyCurrentSettingsToElement(activeContentElement);
+        console.log("Applied initial font settings in DOMContentLoaded if activeContentElement was present.");
+    } else {
+        console.warn("DOMContentLoaded: activeContentElement is null at the end of initial setup, font size might not be applied until it's set by templates.");
+    }
     createSelectionToolbar(); // Create the toolbar so it's ready
 
     // 延迟重新设置翻页按钮，确保所有模板都已完全加载
     setTimeout(function() {
-        console.log('DOM elements check:');
+        // Update activeContentElement reference here if it might have been set by templates after initial JS load
+        if (!activeContentElement && window.activeContentElement) {
+            activeContentElement = window.activeContentElement;
+            console.log('Updated activeContentElement in setTimeout:', activeContentElement);
+            // If it was null before and now set, apply font settings
+            if(activeContentElement && !localStorage.getItem('readerSettings')) { // Apply only if no saved settings, to avoid overriding user's last session
+                 applyCurrentSettingsToElement(activeContentElement);
+                 console.log("Applied font settings in setTimeout as activeContentElement was just found.");
+            } else if (activeContentElement && localStorage.getItem('readerSettings')) {
+                // If settings were loaded but ACE was null, re-apply
+                console.log("Re-applying font settings in setTimeout as activeContentElement is now available.");
+                loadSettings(); // This will call applyCurrentSettingsToElement
+            }
+        }
+        console.log('Final DOM elements check in setTimeout:');
         console.log('page-navigation:', document.getElementById('page-navigation'));
         console.log('page-up:', document.getElementById('page-up'));
         console.log('page-down:', document.getElementById('page-down'));
-        console.log('activeContentElement:', activeContentElement);
-        console.log('contentType:', contentType);
+        console.log('Final activeContentElement in setTimeout:', activeContentElement);
+        console.log('Final contentType in setTimeout:', contentType || window.contentType);
 
         setupPageNavigation();
         setupDragNavigation();
-        console.log('Page navigation and drag functionality re-initialized'); // 调试日志
-    }, 100);
+        console.log('Page navigation and drag functionality re-initialized in setTimeout');
+    }, 100); // This timeout might be critical for when activeContentElement is set by HTML templates
 });
 
 function throttle(func, limit) { /* ... existing throttle ... */
