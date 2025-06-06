@@ -40,6 +40,12 @@
 {% block scripts %}
 {{ super() }} {# Ensures scripts from base.html like recent_reads.js are loaded first #}
 <script>
+// 设置PDF阅读器的内容容器，供reader.js使用
+window.activeContentElement = document.querySelector('.pdf-viewer iframe');
+window.contentType = 'pdf';
+</script>
+<script src="{{ url_for('static', filename='js/reader.js') }}"></script>
+<script>
 document.addEventListener('DOMContentLoaded', function() {
     const filePath = "{{ file_path|e|safe }}";
     const originalFilename = "{{ filename|e|safe }}";
@@ -86,42 +92,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // 翻页功能（对于PDF可能需要特殊处理）
-    const pageUpBtn = document.getElementById('page-up');
-    const pageDownBtn = document.getElementById('page-down');
-    const pageHeight = window.innerHeight * 0.8;
-    
-    pageUpBtn.addEventListener('click', function() {
-        window.scrollBy({
-            top: -pageHeight,
-            behavior: 'auto'
-        });
-    });
-    
-    pageDownBtn.addEventListener('click', function() {
-        window.scrollBy({
-            top: pageHeight,
-            behavior: 'auto'
-        });
-    });
-    
-    // 键盘快捷键
-    document.addEventListener('keydown', function(e) {
-        switch(e.key) {
-            case 'PageUp':
-            case 'ArrowUp':
-            case 'ArrowLeft':
-                e.preventDefault();
-                pageUpBtn.click();
-                break;
-            case 'PageDown':
-            case 'ArrowDown':
-            case 'ArrowRight':
-                e.preventDefault();
-                pageDownBtn.click();
-                break;
-        }
-    });
+    // 翻页功能由reader.js统一处理，这里不再重复设置
+    // reader.js已经加载并会处理翻页按钮的事件监听器
 });
 </script>
 {% endblock %}

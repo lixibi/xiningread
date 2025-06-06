@@ -489,28 +489,50 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function applyAnnotationsToRenderedContent() {
         if (!currentDocumentFilePath) return;
+
+        // 检查annotationsManager是否可用
+        if (typeof annotationsManager === 'undefined') {
+            console.warn('annotationsManager not available, skipping annotations');
+            return;
+        }
+
+        // 使用activeContentElement或contentContainer，确保不为null
+        const targetContainer = activeContentElement || contentContainer;
+        if (!targetContainer) {
+            console.warn('No target container found for annotations');
+            return;
+        }
+
         // Clear existing visual highlights first to avoid duplicates if called multiple times
-        contentContainer.querySelectorAll('.highlighted-text').forEach(span => {
-            // Unwrap content from span
-            const parent = span.parentNode;
-            while (span.firstChild) {
-                parent.insertBefore(span.firstChild, span);
-            }
-            parent.removeChild(span);
-            parent.normalize(); // Merge adjacent text nodes
-        });
-
-
-        const notes = annotationsManager.getNotesForCurrentFile();
-        notes.forEach(note => {
-            if (note.rangeData) {
-                if (note.rangeData.type === 'txt-char-offset' && (contentType === 'txt' || contentType === 'plain')) {
-                    restoreTXTAnnotation(note);
-                } else if (note.rangeData.type === 'md-html' && contentType === 'markdown') {
-                    restoreMDAnnotation(note);
+        try {
+            targetContainer.querySelectorAll('.highlighted-text').forEach(span => {
+                // Unwrap content from span
+                const parent = span.parentNode;
+                while (span.firstChild) {
+                    parent.insertBefore(span.firstChild, span);
                 }
-            }
-        });
+                parent.removeChild(span);
+                parent.normalize(); // Merge adjacent text nodes
+            });
+        } catch (e) {
+            console.error('Error clearing existing highlights:', e);
+            return;
+        }
+
+        try {
+            const notes = annotationsManager.getNotesForCurrentFile();
+            notes.forEach(note => {
+                if (note.rangeData) {
+                    if (note.rangeData.type === 'txt-char-offset' && (contentType === 'txt' || contentType === 'plain')) {
+                        restoreTXTAnnotation(note);
+                    } else if (note.rangeData.type === 'md-html' && contentType === 'markdown') {
+                        restoreMDAnnotation(note);
+                    }
+                }
+            });
+        } catch (e) {
+            console.error('Error applying annotations:', e);
+        }
     }
     
     // Initial load of annotations after content is ready (or sufficiently ready for chunked)
@@ -525,8 +547,24 @@ document.addEventListener('DOMContentLoaded', function() {
         // console.log("applyCurrentSettingsToElement called with:", element); // Removed
         if (element) {
             element.style.setProperty('font-size', currentFontSize + 'px', 'important');
+
+            // 特别处理EPUB内容
+            if (contentType === 'epub') {
+                // 确保EPUB内容的所有子元素也应用字体大小
+                const allElements = element.querySelectorAll('*');
+                allElements.forEach(child => {
+                    // 只对文本内容元素应用字体大小，避免影响布局元素
+                    if (['P', 'DIV', 'SPAN', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'TD', 'TH'].includes(child.tagName)) {
+                        child.style.setProperty('font-size', currentFontSize + 'px', 'important');
+                    }
+                });
+            }
         }
     }
+
+    // 将函数暴露到全局作用域，以便模板中可以访问
+    window.applyCurrentSettingsToElement = applyCurrentSettingsToElement;
+    window.updateProgress = updateProgress;
     if (fontSmallerBtn && fontLargerBtn && activeContentElement) {
         fontSmallerBtn.addEventListener('click', () => {
             if (currentFontSize > 12) {
@@ -579,15 +617,95 @@ document.addEventListener('DOMContentLoaded', function() {
             saveSettings();
         });
     }
-    if (pageUpBtn) pageUpBtn.addEventListener('click', () => window.scrollBy({ top: -(window.innerHeight * 0.8), behavior: 'auto' }));
-    if (pageDownBtn) pageDownBtn.addEventListener('click', () => window.scrollBy({ top: (window.innerHeight * 0.8), behavior: 'auto' }));
-    if (pageNavigation) { /* ... existing draggable logic ... */
-        let isDragging = false; let dragOffset = { x: 0, y: 0 };
-        pageNavigation.addEventListener('mousedown', function(e) { if (e.target === pageNavigation) { isDragging = true; const rect = pageNavigation.getBoundingClientRect(); dragOffset.x = e.clientX - rect.left; dragOffset.y = e.clientY - rect.top; e.preventDefault(); }});
-        [pageUpBtn, pageDownBtn, bookmarkSaveBtn].forEach(btn => { if (btn) btn.addEventListener('mousedown', e => e.stopPropagation()); });
-        document.addEventListener('mousemove', function(e) { if (isDragging) { let x = e.clientX - dragOffset.x; let y = e.clientY - dragOffset.y; const maxX = window.innerWidth - pageNavigation.offsetWidth; const maxY = window.innerHeight - pageNavigation.offsetHeight; pageNavigation.style.right = 'auto'; pageNavigation.style.left = `${Math.max(0, Math.min(x, maxX))}px`; pageNavigation.style.top = `${Math.max(0, Math.min(y, maxY))}px`; pageNavigation.style.transform = 'none'; }});
-        document.addEventListener('mouseup', function() { isDragging = false; });
+    // 翻页按钮事件监听器 - 确保在DOM完全加载后绑定
+    function setupPageNavigation() {
+        const pageUpBtn = document.getElementById('page-up');
+        const pageDownBtn = document.getElementById('page-down');
+
+        console.log('Setting up page navigation. pageUpBtn:', pageUpBtn, 'pageDownBtn:', pageDownBtn); // 调试日志
+
+        if (pageUpBtn) {
+            // 移除可能存在的旧事件监听器
+            pageUpBtn.removeEventListener('click', pageUpHandler);
+            pageUpBtn.addEventListener('click', pageUpHandler);
+            console.log('Page up button event listener added'); // 调试日志
+        } else {
+            console.warn('Page up button not found!'); // 调试日志
+        }
+
+        if (pageDownBtn) {
+            // 移除可能存在的旧事件监听器
+            pageDownBtn.removeEventListener('click', pageDownHandler);
+            pageDownBtn.addEventListener('click', pageDownHandler);
+            console.log('Page down button event listener added'); // 调试日志
+        } else {
+            console.warn('Page down button not found!'); // 调试日志
+        }
     }
+
+    // 定义事件处理函数，避免重复绑定
+    function pageUpHandler(e) {
+        e.preventDefault();
+        console.log('Page up clicked'); // 调试日志
+        window.scrollBy({ top: -(window.innerHeight * 0.8), behavior: 'smooth' });
+    }
+
+    function pageDownHandler(e) {
+        e.preventDefault();
+        console.log('Page down clicked'); // 调试日志
+        window.scrollBy({ top: (window.innerHeight * 0.8), behavior: 'smooth' });
+    }
+
+    // 立即设置翻页按钮
+    setupPageNavigation();
+
+    // 设置翻页按钮拖拽功能
+    function setupDragNavigation() {
+        const pageNavigation = document.getElementById('page-navigation');
+        if (pageNavigation) {
+            let isDragging = false;
+            let dragOffset = { x: 0, y: 0 };
+
+            pageNavigation.addEventListener('mousedown', function(e) {
+                if (e.target === pageNavigation) {
+                    isDragging = true;
+                    const rect = pageNavigation.getBoundingClientRect();
+                    dragOffset.x = e.clientX - rect.left;
+                    dragOffset.y = e.clientY - rect.top;
+                    e.preventDefault();
+                }
+            });
+
+            // 防止按钮点击时触发拖拽
+            const pageUpBtn = document.getElementById('page-up');
+            const pageDownBtn = document.getElementById('page-down');
+            const bookmarkSaveBtn = document.getElementById('bookmark-save');
+
+            [pageUpBtn, pageDownBtn, bookmarkSaveBtn].forEach(btn => {
+                if (btn) btn.addEventListener('mousedown', e => e.stopPropagation());
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (isDragging) {
+                    let x = e.clientX - dragOffset.x;
+                    let y = e.clientY - dragOffset.y;
+                    const maxX = window.innerWidth - pageNavigation.offsetWidth;
+                    const maxY = window.innerHeight - pageNavigation.offsetHeight;
+                    pageNavigation.style.right = 'auto';
+                    pageNavigation.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
+                    pageNavigation.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
+                    pageNavigation.style.transform = 'none';
+                }
+            });
+
+            document.addEventListener('mouseup', function() {
+                isDragging = false;
+            });
+        }
+    }
+
+    // 设置拖拽功能
+    setupDragNavigation();
     
     // 书签功能实现
     function getBookmarkKey() {
@@ -686,8 +804,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleScroll() {
         updateProgress();
 
-        // 检查是否需要加载更多内容块
-        if (chunks.length > currentChunkToRender) {
+        // 检查是否需要加载更多内容块（仅对分块内容类型）
+        if (chunks.length > currentChunkToRender && (contentType === 'txt' || contentType === 'markdown' || contentType === 'plain')) {
             const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
             const scrollHeight = document.documentElement.scrollHeight;
             const clientHeight = document.documentElement.clientHeight;
@@ -704,13 +822,36 @@ document.addEventListener('DOMContentLoaded', function() {
     
     window.addEventListener('scroll', throttledScrollHandler); // Combined scroll handler
     document.addEventListener('keydown', function(e) { /* ... existing keydown logic ... */
-        if (e.ctrlKey && e.key === 'ArrowUp') { e.preventDefault(); if(fontLargerBtn) fontLargerBtn.click(); }
-        else if (e.ctrlKey && e.key === 'ArrowDown') { e.preventDefault(); if(fontSmallerBtn) fontSmallerBtn.click(); }
-        else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); if(pageUpBtn) pageUpBtn.click(); }
-        else if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); if(pageDownBtn) pageDownBtn.click(); }
-        else if (e.key === 'Home') { window.scrollTo(0, 0); e.preventDefault(); }
-        else if (e.key === 'End') { window.scrollTo(0, document.body.scrollHeight); e.preventDefault(); }
-        else if (e.ctrlKey && e.key === 'f') { e.preventDefault(); if(fullscreenBtn) fullscreenBtn.click(); }
+        if (e.ctrlKey && e.key === 'ArrowUp') {
+            e.preventDefault();
+            if(fontLargerBtn) fontLargerBtn.click();
+        }
+        else if (e.ctrlKey && e.key === 'ArrowDown') {
+            e.preventDefault();
+            if(fontSmallerBtn) fontSmallerBtn.click();
+        }
+        else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+            e.preventDefault();
+            console.log('Keyboard page up triggered'); // 调试日志
+            window.scrollBy({ top: -(window.innerHeight * 0.8), behavior: 'smooth' });
+        }
+        else if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+            e.preventDefault();
+            console.log('Keyboard page down triggered'); // 调试日志
+            window.scrollBy({ top: (window.innerHeight * 0.8), behavior: 'smooth' });
+        }
+        else if (e.key === 'Home') {
+            window.scrollTo(0, 0);
+            e.preventDefault();
+        }
+        else if (e.key === 'End') {
+            window.scrollTo(0, document.body.scrollHeight);
+            e.preventDefault();
+        }
+        else if (e.ctrlKey && e.key === 'f') {
+            e.preventDefault();
+            if(fullscreenBtn) fullscreenBtn.click();
+        }
         // Help panel toggle
         if (e.key === 'F1' || (e.key === '?' && e.shiftKey)) {
             e.preventDefault();
@@ -749,7 +890,20 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('beforeunload', saveReadingPosition);
 
     loadSettings();
-    if (! (contentType === 'txt' || contentType === 'markdown' || contentType === 'plain') || chunks.length <= INITIAL_CHUNKS_TO_LOAD) {
+
+    // 根据内容类型决定初始化流程
+    if (contentType === 'epub') {
+        // EPUB内容的特殊处理
+        setTimeout(() => {
+            if (hasBookmark()) {
+                loadBookmark();
+            } else {
+                restoreReadingPosition();
+            }
+            updateProgress();
+            applyAnnotationsToRenderedContent();
+        }, 200);
+    } else if (! (contentType === 'txt' || contentType === 'markdown' || contentType === 'plain') || chunks.length <= INITIAL_CHUNKS_TO_LOAD) {
         setTimeout(() => { if (hasBookmark()) loadBookmark(); else restoreReadingPosition(); updateProgress(); applyAnnotationsToRenderedContent(); }, 200);
     } else {
          setTimeout(() => { updateProgress(); }, 100);
@@ -765,6 +919,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (activeContentElement) applyCurrentSettingsToElement(activeContentElement);
     createSelectionToolbar(); // Create the toolbar so it's ready
+
+    // 延迟重新设置翻页按钮，确保所有模板都已完全加载
+    setTimeout(function() {
+        console.log('DOM elements check:');
+        console.log('page-navigation:', document.getElementById('page-navigation'));
+        console.log('page-up:', document.getElementById('page-up'));
+        console.log('page-down:', document.getElementById('page-down'));
+        console.log('activeContentElement:', activeContentElement);
+        console.log('contentType:', contentType);
+
+        setupPageNavigation();
+        setupDragNavigation();
+        console.log('Page navigation and drag functionality re-initialized'); // 调试日志
+    }, 100);
 });
 
 function throttle(func, limit) { /* ... existing throttle ... */

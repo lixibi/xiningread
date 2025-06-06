@@ -205,6 +205,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 清理多余的空白元素
         cleanEmptyElements(epubContent);
+
+        // 确保reader.js能够正确识别和处理EPUB内容
+        // 等待reader.js加载完成后再进行初始化
+        setTimeout(function() {
+            // 触发字体设置的应用，确保EPUB内容使用正确的字体大小
+            if (window.activeContentElement && typeof window.applyCurrentSettingsToElement === 'function') {
+                window.applyCurrentSettingsToElement(window.activeContentElement);
+            }
+
+            // 确保进度条正确初始化
+            if (typeof window.updateProgress === 'function') {
+                window.updateProgress();
+            }
+        }, 300);
     }
 
     // 目录切换功能
