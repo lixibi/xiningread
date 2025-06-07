@@ -727,8 +727,8 @@ def read_file():
 
             elif full_path.endswith('.txt'):
                 file_type = 'txt'
-                # 对txt文件进行段落处理
-                content = process_chinese_text(content)
+                # 不在服务器端修改txt内容，保持原始内容用于书签功能
+                # 段落缩进将在前端JavaScript中处理
 
             return render_template('reader.html',
                                  content=content,

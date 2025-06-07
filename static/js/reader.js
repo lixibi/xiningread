@@ -86,7 +86,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const chunkHTML = chunks[currentChunkToRender];
         if (contentType === 'txt' || contentType === 'plain') {
             const pre = document.createElement('pre');
-            pre.textContent = chunkHTML;
+            // 对txt文件内容进行中文段落缩进处理
+            const processedContent = contentType === 'txt' ? processTxtContent(chunkHTML) : chunkHTML;
+            pre.textContent = processedContent;
             contentContainer.appendChild(pre);
         } else if (contentType === 'markdown') {
             const tempDiv = document.createElement('div');
@@ -104,6 +106,60 @@ document.addEventListener('DOMContentLoaded', function() {
         // For simplicity, full re-application might happen after all chunks or on demand
         return true;
     }
+
+    // 处理txt文件内容，添加中文段落缩进
+    function processTxtContent(text) {
+        // 分割段落
+        const paragraphs = text.split('\n\n');
+        const processedParagraphs = [];
+
+        for (let para of paragraphs) {
+            para = para.trim();
+            if (para) {
+                // 如果不是以特殊字符开头（如标题、列表等），则添加缩进
+                if (!/^[#\-\*\+\d\.]/.test(para) && !para.startsWith('```')) {
+                    para = '　　' + para;  // 添加两个全角空格作为缩进
+                }
+                processedParagraphs.push(para);
+            }
+        }
+
+        return processedParagraphs.join('\n\n');
+    }
+
+    // 节流函数
+    function throttle(func, limit) {
+        let inThrottle;
+        return function() {
+            const args = arguments;
+            const context = this;
+            if (!inThrottle) {
+                func.apply(context, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        }
+    }
+
+    // 滚动处理函数
+    function handleScroll() {
+        updateProgress();
+
+        // 检查是否需要加载更多内容块（仅对分块内容类型）
+        if (chunks.length > currentChunkToRender && (contentType === 'txt' || contentType === 'markdown' || contentType === 'plain')) {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const scrollHeight = document.documentElement.scrollHeight;
+            const clientHeight = document.documentElement.clientHeight;
+
+            // 当滚动到接近底部时加载下一块内容
+            if (scrollTop + clientHeight >= scrollHeight - SCROLL_THRESHOLD) {
+                renderNextChunk();
+            }
+        }
+    }
+
+    // 节流的滚动处理器
+    const throttledScrollHandler = throttle(handleScroll, 100);
 
     if (contentType === 'txt' || contentType === 'markdown' || contentType === 'plain') {
         chunkContent();
@@ -837,25 +893,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (progressText) progressText.textContent = `${Math.round(progress)}%`;
     }
 
-    // 滚动处理函数
-    function handleScroll() {
-        updateProgress();
 
-        // 检查是否需要加载更多内容块（仅对分块内容类型）
-        if (chunks.length > currentChunkToRender && (contentType === 'txt' || contentType === 'markdown' || contentType === 'plain')) {
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            const scrollHeight = document.documentElement.scrollHeight;
-            const clientHeight = document.documentElement.clientHeight;
-
-            // 当滚动到接近底部时加载下一块内容
-            if (scrollTop + clientHeight >= scrollHeight - SCROLL_THRESHOLD) {
-                renderNextChunk();
-            }
-        }
-    }
-
-    // 节流的滚动处理器
-    const throttledScrollHandler = throttle(handleScroll, 100);
     
     window.addEventListener('scroll', throttledScrollHandler); // Combined scroll handler
     document.addEventListener('keydown', function(e) { /* ... existing keydown logic ... */
@@ -1001,16 +1039,3 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Page navigation and drag functionality re-initialized in setTimeout');
     }, 100); // This timeout might be critical for when activeContentElement is set by HTML templates
 });
-
-function throttle(func, limit) { /* ... existing throttle ... */
-    let inThrottle;
-    return function() {
-        const args = arguments;
-        const context = this;
-        if (!inThrottle) {
-            func.apply(context, args);
-            inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
-        }
-    }
-}

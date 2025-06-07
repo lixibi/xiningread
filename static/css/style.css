@@ -240,6 +240,20 @@ body.custom-font h6 {
     background-color: #eee;
 }
 
+.btn-download { /* Style for the download button */
+    background: none;
+    border: none;
+    color: #555;
+    padding: 5px 8px;
+    font-size: 1.2em;
+    margin-left: 8px;
+    text-decoration: none;
+}
+.btn-download:hover {
+    color: #000;
+    background-color: #eee;
+}
+
 
 /* 空文件夹样式 */
 .empty-folder {
@@ -1078,6 +1092,14 @@ body.dark-mode .btn-edit-meta {
     color: #aaa;
 }
 body.dark-mode .btn-edit-meta:hover {
+    color: #e0e0e0;
+    background-color: #3a3a3a;
+}
+
+body.dark-mode .btn-download {
+    color: #aaa;
+}
+body.dark-mode .btn-download:hover {
     color: #e0e0e0;
     background-color: #3a3a3a;
 }

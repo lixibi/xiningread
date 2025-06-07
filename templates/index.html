@@ -83,6 +83,9 @@
             {% else %}
                 <a href="{{ url_for('download_file', path=file.path) }}" class="btn btn-secondary">⬇️ 下载</a>
             {% endif %}
+            <a href="{{ url_for('download_file', path=file.path) }}" class="btn btn-download btn-control" title="下载文件" style="padding: 5px 8px; font-size: 1.2em;">
+                ⬇️
+            </a>
             <button class="btn btn-favorite" data-filepath="{{ file.path }}" title="收藏/取消收藏">
                 <span class="favorite-icon">☆</span>
             </button>

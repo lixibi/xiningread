@@ -97,6 +97,17 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         console.warn('RecentReadsManager not available or filePath/originalFilename missing for reader.html');
     }
+
+    // 调试：检查翻页按钮是否存在
+    console.log('=== TXT Reader Debug ===');
+    console.log('File type:', '{{ file_type|e|safe }}');
+    console.log('Page navigation element:', document.getElementById('page-navigation'));
+    console.log('Page up button:', document.getElementById('page-up'));
+    console.log('Page down button:', document.getElementById('page-down'));
+    console.log('Bookmark save button:', document.getElementById('bookmark-save'));
+    console.log('Content container:', document.getElementById('content-container'));
+    console.log('Active content element:', window.activeContentElement);
+    console.log('Content type:', window.contentType);
 });
 </script>
 {% endblock %}
