@@ -1,59 +1,67 @@
 // 阅读器交互功能 - 针对墨水屏优化
 
-document.addEventListener('DOMContentLoaded', function() {
-    const readingArea = document.getElementById('reading-area');
-    const contentContainer = document.getElementById('content-container'); // For chunked content
-    const fullContentDataSource = document.getElementById('full-content-data');
-    const staticFileContent = document.querySelector('.code-block code') || document.querySelector('pre.file-content');
+function initializeReaderFeatures() {
+    console.log("[Reader] SUCCESS: window.activeContentElement and window.contentType are set. Initializing reader features...");
+    console.log("[Reader] window.activeContentElement:", window.activeContentElement);
+    console.log("[Reader] window.contentType:", window.contentType);
 
-    // 使用模板中设置的activeContentElement，如果没有则使用默认值
-    let activeContentElement = window.activeContentElement || contentContainer || staticFileContent;
-    console.log("Initial activeContentElement:", activeContentElement, "window.activeContentElement:", window.activeContentElement, "contentType:", window.contentType); // Added initial log
+    // Assign local activeContentElement and contentType from window properties
+    let activeContentElement = window.activeContentElement;
+    let contentType = window.contentType;
+
+    // Keep original DOM element references if they are only needed within this scope
+    // and not by the polling mechanism itself.
+    const readingArea = document.getElementById('reading-area');
+    // contentContainer is often the same as activeContentElement for non-EPUBs, or a parent for EPUBs.
+    // Let's ensure it's defined based on what activeContentElement is.
+    // If activeContentElement is 'epub-content', contentContainer might be its parent or not directly used.
+    // If activeContentElement is 'content-container', then they are the same.
+    const contentContainer = document.getElementById('content-container') || activeContentElement;
+    const fullContentDataSource = document.getElementById('full-content-data');
+    // const staticFileContent = document.querySelector('.code-block code') || document.querySelector('pre.file-content'); // This was part of the original ACE fallback
+
+    console.log("[Reader] Effective activeContentElement for initialization:", activeContentElement);
+    console.log("[Reader] Effective contentType for initialization:", contentType);
 
     const progressFill = document.getElementById('progress-fill');
     const progressText = document.getElementById('progress-text');
-    let currentFontSize = 18;
+    let currentFontSize = 18; // Default font size
     const fontSmallerBtn = document.getElementById('font-smaller');
     const fontLargerBtn = document.getElementById('font-larger');
     const fullscreenBtn = document.getElementById('fullscreen-browser');
     const bookmarkBtn = document.getElementById('bookmark-btn');
     const bookmarkSaveBtn = document.getElementById('bookmark-save');
-    const pageUpBtn = document.getElementById('page-up');
-    const pageDownBtn = document.getElementById('page-down');
-    const pageNavigation = document.getElementById('page-navigation');
+    // pageUpBtn and pageDownBtn are obtained within setupPageNavigation
+    // const pageNavigation = document.getElementById('page-navigation'); // Obtained within setupDragNavigation
     const controlToggle = document.getElementById('control-toggle');
     const readerControls = document.getElementById('reader-controls');
     let isControlsCollapsed = false;
     
-    // Extract file path from URL query parameter (e.g., /read?path=...)
     const urlParams = new URLSearchParams(window.location.search);
-    const currentDocumentFilePath = urlParams.get('path'); // This is the key for annotations
-    if (currentDocumentFilePath) {
+    const currentDocumentFilePath = urlParams.get('path');
+    if (currentDocumentFilePath && typeof annotationsManager !== 'undefined') {
         annotationsManager.setCurrentFile(currentDocumentFilePath);
+    } else if (currentDocumentFilePath) {
+        console.warn("[Reader] annotationsManager is undefined, cannot set current file for annotations.");
     }
 
-
-    // --- Content Chunking Logic (existing) ---
+    // --- Content Chunking Logic ---
     let fullContent = '';
-    let contentType = window.contentType || ''; // 使用模板中设置的contentType
     let chunks = [];
     let currentChunkToRender = 0;
     const LINES_PER_CHUNK_TXT = 50;
     const CHARS_PER_CHUNK_MD = 8000;
     const INITIAL_CHUNKS_TO_LOAD = 2;
-    const SCROLL_THRESHOLD = 400;
+    const SCROLL_THRESHOLD = 400; // Pixels from bottom to trigger next chunk load
 
-    if (fullContentDataSource && contentContainer) {
+    // Ensure contentContainer is valid for chunking; it should be the element where chunks are appended.
+    // For EPUB, activeContentElement is 'epub-content', chunking is not used.
+    // For TXT/MD, activeContentElement is 'content-container', which is also our contentContainer.
+    if (fullContentDataSource && contentContainer && (contentType === 'txt' || contentType === 'markdown' || contentType === 'plain')) {
         fullContent = fullContentDataSource.textContent.trim();
-        // 如果模板没有设置contentType，则从CSS类推断
-        if (!contentType) {
-            if (contentContainer.classList.contains('markdown-content')) contentType = 'markdown';
-            else if (contentContainer.classList.contains('txt-content')) contentType = 'txt';
-            else if (contentContainer.classList.contains('file-content')) contentType = 'plain';
-        }
     }
     
-    function chunkContent() { /* ... existing chunkContent ... */
+    function chunkContent() {
         if (!fullContent) return;
         chunks = [];
         if (contentType === 'txt' || contentType === 'plain') {
@@ -62,25 +70,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 chunks.push(lines.slice(i, i + LINES_PER_CHUNK_TXT).join('\n'));
             }
         } else if (contentType === 'markdown') {
+            // Markdown chunking (simplified)
             for (let i = 0; i < fullContent.length; i += CHARS_PER_CHUNK_MD) {
                 let end = i + CHARS_PER_CHUNK_MD;
+                // Try to not cut in the middle of a tag or word if possible (very simplified)
                 if (end < fullContent.length) {
-                    let potentialEnd = fullContent.lastIndexOf('>', end);
+                    let potentialEnd = fullContent.lastIndexOf('>', end); // Prefer ending after a tag
                     if (potentialEnd > i) end = potentialEnd + 1;
                     else {
-                        potentialEnd = fullContent.lastIndexOf(' ', end);
+                        potentialEnd = fullContent.lastIndexOf(' ', end); // Or after a space
                         if (potentialEnd > i) end = potentialEnd + 1;
                     }
                 }
                 chunks.push(fullContent.substring(i, Math.min(end, fullContent.length)));
             }
         }
+        console.log(`[Reader] Content chunked into ${chunks.length} chunks for contentType: ${contentType}`);
     }
 
-    function renderNextChunk() { /* ... existing renderNextChunk, but call applyAnnotationsAfterChunkRender ... */
+    function renderNextChunk() {
         if (currentChunkToRender >= chunks.length || !contentContainer) {
             window.removeEventListener('scroll', throttledScrollHandler);
-            applyAnnotationsToRenderedContent(); // Apply any pending annotations once all chunks are done
+            console.log("[Reader] All chunks rendered or contentContainer missing. Removing scroll listener.");
+            applyAnnotationsToRenderedContent();
             return false;
         }
         const chunkHTML = chunks[currentChunkToRender];
@@ -89,41 +101,26 @@ document.addEventListener('DOMContentLoaded', function() {
             pre.textContent = chunkHTML;
             contentContainer.appendChild(pre);
         } else if (contentType === 'markdown') {
+            // Assuming chunkHTML is safe HTML string from Python-Markdown
             const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = chunkHTML;
+            tempDiv.innerHTML = chunkHTML; // This part needs to be safe if content isn't pre-sanitized
             while(tempDiv.firstChild){ contentContainer.appendChild(tempDiv.firstChild); }
         }
         currentChunkToRender++;
-        applyCurrentSettingsToElement(contentContainer);
-        console.log(`Chunk ${currentChunkToRender-1} rendered. Applied font size ${currentFontSize}px to contentContainer.`);
-        if (contentContainer) {
-            console.log(`contentContainer current inline font-size: ${contentContainer.style.fontSize}`);
+        // Apply font settings to the container; new chunks should inherit or be covered by general styling
+        if (activeContentElement) applyCurrentSettingsToElement(activeContentElement); // Apply to the main readable area
+        else if (contentContainer) applyCurrentSettingsToElement(contentContainer);
+
+
+        console.log(`[Reader] Chunk ${currentChunkToRender-1} rendered. Applied font size ${currentFontSize}px.`);
+        if (contentContainer && contentContainer.style) {
+            console.log(`[Reader] contentContainer current inline font-size: ${contentContainer.style.fontSize}`);
         }
         updateProgress();
-        // Potentially apply annotations to the newly rendered chunk if feasible
-        // For simplicity, full re-application might happen after all chunks or on demand
         return true;
     }
 
-    if (contentType === 'txt' || contentType === 'markdown' || contentType === 'plain') {
-        chunkContent();
-        if (contentContainer) contentContainer.innerHTML = '';
-        let loadedInitial = 0;
-        for (let i = 0; i < INITIAL_CHUNKS_TO_LOAD && loadedInitial < chunks.length; i++) {
-            if(renderNextChunk()) loadedInitial++;
-        }
-        if (chunks.length > loadedInitial) {
-            window.addEventListener('scroll', throttledScrollHandler);
-        } else {
-            applyAnnotationsToRenderedContent(); // All content loaded initially
-            updateProgress();
-        }
-    } else {
-        applyAnnotationsToRenderedContent(); // For non-chunked content
-        updateProgress();
-    }
     // --- End Content Chunking Logic ---
-
 
     // --- Annotation Toolbar & Logic ---
     let selectionToolbar;
@@ -134,9 +131,9 @@ document.addEventListener('DOMContentLoaded', function() {
         selectionToolbar = document.createElement('div');
         selectionToolbar.id = 'selection-toolbar';
         selectionToolbar.style.display = 'none';
+        // ... (rest of createSelectionToolbar as before)
         selectionToolbar.style.position = 'absolute';
         selectionToolbar.style.zIndex = '10000';
-        // Basic styling, can be moved to CSS
         selectionToolbar.style.background = 'black';
         selectionToolbar.style.border = '1px solid white';
         selectionToolbar.style.padding = '5px';
@@ -166,17 +163,17 @@ document.addEventListener('DOMContentLoaded', function() {
         if (selectionToolbar) selectionToolbar.style.display = 'none';
     }
 
+    // Ensure readingArea is defined before attaching listener
     if (readingArea) {
         readingArea.addEventListener('mouseup', function(e) {
-            setTimeout(() => { // Allow selection to finalize
+            setTimeout(() => {
                 const selection = window.getSelection();
                 if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
                     currentSelectionRange = selection.getRangeAt(0);
-                    // Ensure selection is within the readable content area
-                    if (contentContainer && contentContainer.contains(currentSelectionRange.commonAncestorContainer)) {
-                         // Check if selection is not on an existing annotation span directly
+                    // Ensure contentContainer is valid for checking contains
+                    const validContainer = (contentType === 'epub' && window.activeContentElement) ? window.activeContentElement : contentContainer;
+                    if (validContainer && validContainer.contains(currentSelectionRange.commonAncestorContainer)) {
                         if (currentSelectionRange.startContainer.nodeType === Node.ELEMENT_NODE && currentSelectionRange.startContainer.classList.contains('highlighted-text')) {
-                            // Don't show toolbar if clicking on an existing highlight
                             hideSelectionToolbar();
                             return;
                         }
@@ -190,29 +187,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 10);
         });
     }
-    document.addEventListener('mousedown', function(e) { // Hide toolbar if clicking elsewhere
+
+    document.addEventListener('mousedown', function(e) {
         if (selectionToolbar && selectionToolbar.style.display === 'flex' && !selectionToolbar.contains(e.target)) {
-             // Check if the click is outside the toolbar and not on selected text
             const selection = window.getSelection();
-            if (selection.isCollapsed || !readingArea.contains(selection.anchorNode)) {
+            const validReadingArea = readingArea || activeContentElement; // Use activeContentElement if readingArea is not defined
+            if (selection.isCollapsed || (validReadingArea && !validReadingArea.contains(selection.anchorNode))) {
                  hideSelectionToolbar();
             }
         }
     });
 
-
     function getTXTSelectionRangeData(range) {
-        if (!contentContainer || !fullContent) return null;
-        // Assumes contentContainer contains <pre> tags for each chunk of TXT
-        // This needs to account for the full, unchunked text content.
+        // Ensure contentContainer is valid
+        const validContainer = (contentType === 'epub' && window.activeContentElement) ? window.activeContentElement : contentContainer;
+        if (!validContainer || !fullContent) return null;
 
-        let charCountUpToRangeStart = 0;
-        const preElements = Array.from(contentContainer.querySelectorAll('pre'));
-        let foundStart = false;
-
-        // Calculate start offset based on full text
         let tempRange = document.createRange();
-        tempRange.selectNodeContents(contentContainer); // Select all content within container
+        tempRange.selectNodeContents(validContainer);
         tempRange.setEnd(range.startContainer, range.startOffset);
         const textBeforeSelection = tempRange.toString();
         const startOffset = textBeforeSelection.length;
@@ -224,12 +216,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function getPathTo(node) {
-        // 生成节点的简单路径
         if (!node || node === document) return '';
-
         let path = '';
         let current = node;
-
         while (current && current !== document) {
             if (current.id) {
                 path = `id("${current.id}")` + (path ? '/' + path : '');
@@ -242,137 +231,100 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             current = current.parentNode;
         }
-
         return path;
     }
 
     function getMDSelectionRangeData(range) {
-        // Simplified: store selected text and its context.
-        // More robust: path to start/end containers and offsets.
         const selectedText = range.toString().trim();
         if (!selectedText) return null;
-
         let startNode = range.startContainer;
         let endNode = range.endContainer;
-
-        // Try to get a path for start and end nodes
-        // This is very basic; real path generation is complex
         const startNodePath = getPathTo(startNode);
         const endNodePath = getPathTo(endNode);
-
         return {
             type: 'md-html',
-            startNodePath: startNodePath,
-            startOffset: range.startOffset,
-            endNodePath: endNodePath,
-            endOffset: range.endOffset,
+            startNodePath: startNodePath, startOffset: range.startOffset,
+            endNodePath: endNodePath, endOffset: range.endOffset,
             selectedText: selectedText
         };
     }
 
-
     function applyHighlight(range, noteId, color = 'yellow', noteType = 'highlight') {
         if (range.collapsed) return;
-
         const span = document.createElement('span');
         span.className = 'highlighted-text';
         span.style.backgroundColor = color;
         span.dataset.noteId = noteId;
         if (noteType === 'note') {
-            span.classList.add('annotated-text'); // For different styling or click handling
+            span.classList.add('annotated-text');
         }
-
         try {
-            // If selection spans multiple nodes, surroundContents might fail for some complex cases.
-            // A more robust way is to iterate through text nodes in the range and wrap them.
             if (range.startContainer === range.endContainer && range.startContainer.nodeType === Node.TEXT_NODE) {
                  range.surroundContents(span);
             } else {
-                // Iterate over parts of the range if it spans multiple elements
                 const fragment = range.extractContents();
                 span.appendChild(fragment);
                 range.insertNode(span);
             }
-        } catch (e) {
-            console.error("Error applying highlight with surroundContents:", e);
-            // Fallback or more granular node walking and wrapping would be needed here
-            // For now, just log and skip if complex range fails
-            return;
-        }
+        } catch (e) { console.error("Error applying highlight:", e); }
     }
-
 
     function handleAnnotation(type) {
         if (!currentSelectionRange) return;
-
         let rangeData;
         if (contentType === 'txt' || contentType === 'plain') {
             rangeData = getTXTSelectionRangeData(currentSelectionRange);
         } else if (contentType === 'markdown') {
             rangeData = getMDSelectionRangeData(currentSelectionRange);
+        } else if (contentType === 'epub') { // EPUB might use TXT-like selection or need its own
+            rangeData = getTXTSelectionRangeData(currentSelectionRange); // Assuming EPUB text selection is similar to TXT for now
         } else {
             console.warn("Annotation not supported for this content type:", contentType);
-            hideSelectionToolbar();
-            return;
+            hideSelectionToolbar(); return;
         }
-
         if (!rangeData) {
-            console.warn("Could not generate range data for annotation.");
-            hideSelectionToolbar();
-            return;
+            console.warn("Could not generate range data.");
+            hideSelectionToolbar(); return;
         }
-
         let comment = "";
         if (type === 'note') {
             comment = prompt("输入您的备注:", "");
-            if (comment === null) { // User cancelled
-                hideSelectionToolbar();
-                window.getSelection().removeAllRanges();
-                return;
-            }
+            if (comment === null) { hideSelectionToolbar(); window.getSelection().removeAllRanges(); return; }
         }
-
         const note = {
-            type: type,
-            text: rangeData.selectedText || currentSelectionRange.toString(), // Ensure selectedText is stored
-            comment: comment,
-            color: (type === 'note' ? 'lightblue' : 'yellow'), // Example colors
-            rangeData: rangeData,
-            timestamp: new Date().toISOString()
+            type: type, text: rangeData.selectedText || currentSelectionRange.toString(),
+            comment: comment, color: (type === 'note' ? 'lightblue' : 'yellow'),
+            rangeData: rangeData, timestamp: new Date().toISOString()
         };
-
-        const savedNote = annotationsManager.addNote(note);
-        if (savedNote) {
-            applyHighlight(currentSelectionRange, savedNote.id, savedNote.color, savedNote.type);
+        if (typeof annotationsManager !== 'undefined') {
+            const savedNote = annotationsManager.addNote(note);
+            if (savedNote) applyHighlight(currentSelectionRange, savedNote.id, savedNote.color, savedNote.type);
+        } else {
+            console.warn("[Reader] annotationsManager not available. Cannot save annotation.");
         }
-        
         hideSelectionToolbar();
-        if (window.getSelection) window.getSelection().removeAllRanges(); // Clear selection
+        if (window.getSelection) window.getSelection().removeAllRanges();
     }
 
     function restoreTXTAnnotation(note) {
-        if (!contentContainer || !fullContent || note.rangeData.type !== 'txt-char-offset') return;
+        const validContainer = (contentType === 'epub' && window.activeContentElement) ? window.activeContentElement : contentContainer;
+        if (!validContainer || (contentType !== 'epub' && !fullContent) || note.rangeData.type !== 'txt-char-offset') return;
 
         const { startOffset, endOffset } = note.rangeData;
-        let accumulatedOffset = 0;
-        let startNode = null, startNodeOffset = 0;
-        let endNode = null, endNodeOffset = 0;
-
-        // Find start and end nodes/offsets based on character offsets from fullContent
-        // This needs to iterate through the text nodes of all <pre> child elements if chunked
         function findNodeAndOffset(targetGlobalOffset) {
             let currentGlobalOffset = 0;
-            const preElements = Array.from(contentContainer.querySelectorAll('pre'));
-            if (preElements.length === 0 && contentContainer.firstChild && contentContainer.firstChild.nodeType === Node.TEXT_NODE) {
-                // Not chunked, or single text node in contentContainer itself (less likely with <pre> per chunk)
-                if (targetGlobalOffset <= contentContainer.firstChild.textContent.length) {
-                    return { node: contentContainer.firstChild, offset: targetGlobalOffset };
+            // For EPUB, validContainer is #epub-content. For TXT, it's #content-container containing <pre>
+            const elementsToSearch = (contentType === 'epub') ? [validContainer] : Array.from(validContainer.querySelectorAll('pre'));
+
+            if (elementsToSearch.length === 0 && validContainer.firstChild && validContainer.firstChild.nodeType === Node.TEXT_NODE && contentType !== 'epub') {
+                 if (targetGlobalOffset <= validContainer.firstChild.textContent.length) {
+                    return { node: validContainer.firstChild, offset: targetGlobalOffset };
                 }
-                return null; // Offset out of bounds
+                return null;
             }
 
-            for (const pre of preElements) {
-                const walker = document.createTreeWalker(pre, NodeFilter.SHOW_TEXT, null, false);
+            for (const elem of elementsToSearch) {
+                const walker = document.createTreeWalker(elem, NodeFilter.SHOW_TEXT, null, false);
                 let node;
                 while (node = walker.nextNode()) {
                     const nodeLength = node.textContent.length;
@@ -381,51 +333,39 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     currentGlobalOffset += nodeLength;
                 }
-                // Account for newlines between <pre> if they were part of original fullContent and not in <pre> textContent
-                // This part is tricky and depends on how fullContent was constructed vs. how it's put in DOM.
-                // Assuming newlines are within the <pre> textContent due to .join('\n') in chunking.
             }
-            return null; // Offset not found
+            return null;
         }
-
         const startPos = findNodeAndOffset(startOffset);
         const endPos = findNodeAndOffset(endOffset);
-
         if (startPos && endPos) {
             try {
                 const range = document.createRange();
                 range.setStart(startPos.node, startPos.offset);
                 range.setEnd(endPos.node, endPos.offset);
                 applyHighlight(range, note.id, note.color, note.type);
-            } catch (e) {
-                console.error("Error restoring TXT annotation range:", e, note);
-            }
-        } else {
-            console.warn("Could not find nodes for TXT annotation:", note);
-        }
+            } catch (e) { console.error("Error restoring TXT/EPUB annotation range:", e, note); }
+        } else { console.warn("Could not find nodes for TXT/EPUB annotation:", note); }
     }
     
     function restoreMDAnnotation(note) {
+        // This function remains complex and potentially fragile as noted before.
+        // Ensure contentContainer is valid for MD
         if (!contentContainer || note.rangeData.type !== 'md-html') return;
-        // Simplified MD restoration: find text and highlight. Very fragile.
-        // This would need the robust path-based or advanced context search.
-        // For now, this part will be mostly non-functional or highly limited.
-        // A very basic attempt:
         const { selectedText, startNodePath, startOffset, endNodePath, endOffset } = note.rangeData;
-
-        function getNodeByPath(pathStr) { // Very simplified version of XPath eval
+        // ... (getNodeByPath and the rest of restoreMDAnnotation logic remains the same)
+        // For brevity, not repeating the whole function here, assume it's moved.
+        // IMPORTANT: Ensure getNodeByPath is also moved into initializeReaderFeatures or made accessible.
+        function getNodeByPath(pathStr) { /* ... as before ... */
             try {
                 if (pathStr.startsWith('id("')) {
                     const id = pathStr.match(/id\("([^"]+)"\)/)[1];
                     return document.getElementById(id);
                 }
-                // This simplified path like 'body/div[1]/p[2]' needs a real parser.
-                // For now, this part of MD restoration is effectively disabled.
-                let current = document;
+                let current = document; // Simplified, might need to be contentContainer
                 const parts = pathStr.split('/');
                 for(const part of parts){
                     if(!current) return null;
-                    // This is not how to parse 'p[1]', just a placeholder
                     const match = part.match(/(\w+)(?:\[(\d+)\])?/);
                     if(!match) return null;
                     const tagName = match[1].toUpperCase();
@@ -445,390 +385,96 @@ document.addEventListener('DOMContentLoaded', function() {
                     if(!found) return null;
                 }
                 return current;
-
             } catch (e) { console.error("Error in getNodeByPath", e); return null; }
         }
-
         const startContainer = getNodeByPath(startNodePath);
         const endContainer = getNodeByPath(endNodePath);
-
         if (startContainer && endContainer && typeof startOffset === 'number' && typeof endOffset === 'number') {
-             try {
+            try {
                 const range = document.createRange();
-                // Ensure nodes are text nodes or have sufficient children for offset
-                if ( (startContainer.nodeType === Node.TEXT_NODE || startContainer.childNodes.length > startOffset) &&
-                     (endContainer.nodeType === Node.TEXT_NODE || endContainer.childNodes.length > endOffset) ) {
-
-                    // Check if nodeValue is null before accessing length
+                if ( (startContainer.nodeType === Node.TEXT_NODE || startContainer.childNodes.length >= startOffset) && //childNodes.length should be > offset
+                     (endContainer.nodeType === Node.TEXT_NODE || endContainer.childNodes.length >= endOffset) ) { //childNodes.length should be > offset
                     const startNodeLength = startContainer.nodeValue ? startContainer.nodeValue.length : (startContainer.childNodes ? startContainer.childNodes.length : 0);
                     const endNodeLength = endContainer.nodeValue ? endContainer.nodeValue.length : (endContainer.childNodes ? endContainer.childNodes.length : 0);
 
                     if (startOffset <= startNodeLength && endOffset <= endNodeLength) {
                         range.setStart(startContainer, startOffset);
                         range.setEnd(endContainer, endOffset);
-                        if (range.toString().trim() === selectedText) { // Verify text content
+                        if (range.toString().trim() === selectedText) {
                             applyHighlight(range, note.id, note.color, note.type);
-                        } else {
-                            console.warn("MD annotation text mismatch, skipping:", note.selectedText, "vs", range.toString());
-                        }
-                    } else {
-                         console.warn("MD annotation offset out of bounds:", note);
-                    }
-                } else {
-                     console.warn("MD annotation node type or child count issue:", note);
-                }
-
-            } catch (e) {
-                console.error("Error restoring MD annotation range:", e, note);
-            }
-        } else {
-             console.warn("Could not find nodes for MD annotation or invalid offsets:", note);
-        }
+                        } else { console.warn("MD annotation text mismatch:", note.selectedText, "vs", range.toString()); }
+                    } else { console.warn("MD annotation offset out of bounds:", note); }
+                } else { console.warn("MD annotation node type or child count issue:", note); }
+            } catch (e) { console.error("Error restoring MD annotation range:", e, note); }
+        } else { console.warn("Could not find nodes for MD annotation or invalid offsets:", note); }
     }
-
 
     function applyAnnotationsToRenderedContent() {
         if (!currentDocumentFilePath) return;
-
-        // 检查annotationsManager是否可用
         if (typeof annotationsManager === 'undefined') {
-            console.warn('annotationsManager not available, skipping annotations');
+            console.warn('[Reader] annotationsManager not available, skipping annotations');
             return;
         }
-
-        // 使用activeContentElement或contentContainer，确保不为null
-        const targetContainer = activeContentElement || contentContainer;
-        if (!targetContainer) {
-            console.warn('No target container found for annotations');
+        // Use the globally confirmed activeContentElement for annotations target
+        const targetContainerForAnnotations = window.activeContentElement;
+        if (!targetContainerForAnnotations) {
+            console.warn('[Reader] No target container found for annotations (window.activeContentElement is null)');
             return;
         }
-
-        // Clear existing visual highlights first to avoid duplicates if called multiple times
         try {
-            targetContainer.querySelectorAll('.highlighted-text').forEach(span => {
-                // Unwrap content from span
+            targetContainerForAnnotations.querySelectorAll('.highlighted-text').forEach(span => {
                 const parent = span.parentNode;
-                while (span.firstChild) {
-                    parent.insertBefore(span.firstChild, span);
-                }
+                while (span.firstChild) { parent.insertBefore(span.firstChild, span); }
                 parent.removeChild(span);
-                parent.normalize(); // Merge adjacent text nodes
+                parent.normalize();
             });
-        } catch (e) {
-            console.error('Error clearing existing highlights:', e);
-            return;
-        }
-
+        } catch (e) { console.error('[Reader] Error clearing existing highlights:', e); return; }
         try {
             const notes = annotationsManager.getNotesForCurrentFile();
             notes.forEach(note => {
                 if (note.rangeData) {
-                    if (note.rangeData.type === 'txt-char-offset' && (contentType === 'txt' || contentType === 'plain')) {
+                    if (note.rangeData.type === 'txt-char-offset') { // Handles TXT and EPUB (if EPUB uses this type)
                         restoreTXTAnnotation(note);
                     } else if (note.rangeData.type === 'md-html' && contentType === 'markdown') {
                         restoreMDAnnotation(note);
                     }
                 }
             });
-        } catch (e) {
-            console.error('Error applying annotations:', e);
-        }
+        } catch (e) { console.error('[Reader] Error applying annotations:', e); }
     }
     
-    // Initial load of annotations after content is ready (or sufficiently ready for chunked)
-    // This is called from the chunking logic when appropriate.
-    // If not chunking, call it after loadSettings/restoreReadingPosition.
+    // --- End Annotation Logic ---
 
-    // --- Existing reader.js functionalities (font, fullscreen, bookmark, etc.) ---
-    // Ensure they use `activeContentElement` for styling if applicable.
-    // ... (Most of the existing code from reader.js, adapted to use activeContentElement where needed) ...
+    // --- Core Functionalities (Font, Fullscreen, Bookmark, etc.) ---
+    // Ensure `activeContentElement` used below is the one derived from `window.activeContentElement`
 
-    function applyCurrentSettingsToElement(element) {
-        console.log("applyCurrentSettingsToElement called with:", element, "Current font size:", currentFontSize, "ContentType:", contentType); // Added log
-        if (element) {
-            element.style.setProperty('font-size', currentFontSize + 'px', 'important');
-            console.log(`Applied font-size ${currentFontSize}px to element:`, element);
-            if (element.style.fontSize) {
-                console.log(`Element's inline font-size after setProperty: ${element.style.fontSize}`);
-            } else {
-                console.log(`Element's inline font-size is not set directly after setProperty (might be in CSSStyleDeclaration).`);
+    function applyCurrentSettingsToElement(elementToStyle) { // Renamed parameter for clarity
+        // `elementToStyle` should be `window.activeContentElement`
+        console.log("[Reader] applyCurrentSettingsToElement called with:", elementToStyle, "Current font size:", currentFontSize, "Effective ContentType:", contentType);
+        if (elementToStyle) {
+            if (contentType === 'epub') {
+                console.log(`[Reader] Applying font settings for EPUB. Target element:`, elementToStyle, `Font size: ${currentFontSize}px`);
             }
-
-            // For EPUB, applying to the main container (#epub-content) should be enough if children inherit.
-            // The '!important' flag should help override internal EPUB styles.
-            // No longer iterating child elements for EPUBs, relying on inheritance from the main 'element'.
-            // If specific EPUB elements still don't resize, it might be due to very specific CSS within the EPUB
-            // or elements not being children of the 'element' passed to this function.
+            elementToStyle.style.setProperty('font-size', currentFontSize + 'px', 'important');
+            // console.log(`[Reader] Applied font-size ${currentFontSize}px to element:`, elementToStyle); // Slightly redundant with the EPUB log, can be kept for non-EPUB
+            if (elementToStyle.style.fontSize) {
+                // console.log(`[Reader] Element's inline font-size after setProperty: ${elementToStyle.style.fontSize}`);
+            } else {
+                // console.log(`[Reader] Element's inline font-size not set directly (check CSSStyleDeclaration).`);
+            }
+            // For EPUB, direct application to #epub-content (which is activeContentElement) is now the primary method.
         } else {
-            console.warn("applyCurrentSettingsToElement: element is null or undefined.");
+            console.warn("[Reader] applyCurrentSettingsToElement: elementToStyle is null or undefined.");
         }
     }
+    window.applyCurrentSettingsToElement = applyCurrentSettingsToElement; // Expose globally if needed by other scripts (e.g. EPUB specific)
 
-    // 将函数暴露到全局作用域，以便模板中可以访问
-    window.applyCurrentSettingsToElement = applyCurrentSettingsToElement;
-    window.updateProgress = updateProgress;
-    if (fontSmallerBtn && fontLargerBtn) { // Check for activeContentElement inside event listener
-        fontSmallerBtn.addEventListener('click', () => {
-            console.log("Font-smaller button clicked. Current activeContentElement:", activeContentElement, "Current font size:", currentFontSize);
-            if (!activeContentElement) {
-                console.error("Cannot change font size: activeContentElement is null.");
-                return;
-            }
-            if (currentFontSize > 12) {
-                currentFontSize -= 2;
-                applyCurrentSettingsToElement(activeContentElement);
-                console.log(`Font size changed to ${currentFontSize}px. Target element:`, activeContentElement);
-                if (activeContentElement && activeContentElement.style) {
-                     console.log(`Target element inline font-size after change: ${activeContentElement.style.fontSize}`);
-                }
-                saveSettings();
-            }
-        });
-        fontLargerBtn.addEventListener('click', () => {
-            console.log("Font-larger button clicked. Current activeContentElement:", activeContentElement, "Current font size:", currentFontSize);
-            if (!activeContentElement) {
-                console.error("Cannot change font size: activeContentElement is null.");
-                return;
-            }
-            if (currentFontSize < 32) {
-                currentFontSize += 2;
-                applyCurrentSettingsToElement(activeContentElement);
-                console.log(`Font size changed to ${currentFontSize}px. Target element:`, activeContentElement);
-                if (activeContentElement && activeContentElement.style) {
-                     console.log(`Target element inline font-size after change: ${activeContentElement.style.fontSize}`);
-                }
-                saveSettings();
-            }
-        });
-    }
-    if (fullscreenBtn) {
-        fullscreenBtn.addEventListener('click', function() {
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
-            } else {
-                document.documentElement.requestFullscreen();
-            }
-        });
-        document.addEventListener('fullscreenchange', function() {
-            console.log('Fullscreen state changed. document.fullscreenElement:', document.fullscreenElement); // Keep this log for now
-            fullscreenBtn.textContent = document.fullscreenElement ? '🔲 退出全屏' : '🔳 浏览器全屏';
-            if (document.fullscreenElement) {
-                document.body.classList.add('fullscreen-mode');
-                console.log('Added fullscreen-mode class to body.'); // Keep this
-            } else {
-                document.body.classList.remove('fullscreen-mode');
-                console.log('Removed fullscreen-mode class from body.'); // Keep this
-            }
-        });
-    }
-    if (controlToggle && readerControls) { /* ... existing control toggle logic ... */
-        controlToggle.addEventListener('click', function() {
-            isControlsCollapsed = !isControlsCollapsed;
-            readerControls.classList.toggle('collapsed', isControlsCollapsed);
-            controlToggle.textContent = isControlsCollapsed ? '⚙️ 展开设置' : '⚙️ 收起设置';
-            saveSettings();
-        });
-    }
-    // 翻页按钮事件监听器 - 确保在DOM完全加载后绑定
-    function setupPageNavigation() {
-        const pageUpBtn = document.getElementById('page-up');
-        const pageDownBtn = document.getElementById('page-down');
-
-        console.log('Setting up page navigation. pageUpBtn:', pageUpBtn, 'pageDownBtn:', pageDownBtn); // 调试日志
-
-        if (pageUpBtn) {
-            // 移除可能存在的旧事件监听器
-            pageUpBtn.removeEventListener('click', pageUpHandler);
-            pageUpBtn.addEventListener('click', pageUpHandler);
-            console.log('Page up button event listener added'); // 调试日志
-        } else {
-            console.warn('Page up button not found!'); // 调试日志
-        }
-
-        if (pageDownBtn) {
-            // 移除可能存在的旧事件监听器
-            pageDownBtn.removeEventListener('click', pageDownHandler);
-            pageDownBtn.addEventListener('click', pageDownHandler);
-            console.log('Page down button event listener added'); // 调试日志
-        } else {
-            console.warn('Page down button not found!'); // 调试日志
-        }
-    }
-
-    // 定义事件处理函数，避免重复绑定
-    function pageUpHandler(e) {
-        e.preventDefault();
-        console.log('Page up clicked'); // 调试日志
-        window.scrollBy({ top: -(window.innerHeight * 0.8), behavior: 'smooth' });
-    }
-
-    function pageDownHandler(e) {
-        e.preventDefault();
-        console.log('Page down clicked'); // 调试日志
-        window.scrollBy({ top: (window.innerHeight * 0.8), behavior: 'smooth' });
-    }
-
-    // 立即设置翻页按钮
-    setupPageNavigation();
-
-    // 设置翻页按钮拖拽功能
-    function setupDragNavigation() {
-        const pageNavigation = document.getElementById('page-navigation');
-        if (pageNavigation) {
-            let isDragging = false;
-            let dragOffset = { x: 0, y: 0 };
-
-            pageNavigation.addEventListener('mousedown', function(e) {
-                if (e.target === pageNavigation) {
-                    isDragging = true;
-                    const rect = pageNavigation.getBoundingClientRect();
-                    dragOffset.x = e.clientX - rect.left;
-                    dragOffset.y = e.clientY - rect.top;
-                    e.preventDefault();
-                }
-            });
-
-            // 防止按钮点击时触发拖拽
-            const pageUpBtn = document.getElementById('page-up');
-            const pageDownBtn = document.getElementById('page-down');
-            const bookmarkSaveBtn = document.getElementById('bookmark-save');
-
-            [pageUpBtn, pageDownBtn, bookmarkSaveBtn].forEach(btn => {
-                if (btn) btn.addEventListener('mousedown', e => e.stopPropagation());
-            });
-
-            document.addEventListener('mousemove', function(e) {
-                if (isDragging) {
-                    let x = e.clientX - dragOffset.x;
-                    let y = e.clientY - dragOffset.y;
-                    const maxX = window.innerWidth - pageNavigation.offsetWidth;
-                    const maxY = window.innerHeight - pageNavigation.offsetHeight;
-                    pageNavigation.style.right = 'auto';
-                    pageNavigation.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
-                    pageNavigation.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
-                    pageNavigation.style.transform = 'none';
-                }
-            });
-
-            document.addEventListener('mouseup', function() {
-                isDragging = false;
-            });
-        }
-    }
-
-    // 设置拖拽功能
-    setupDragNavigation();
-    
-    // 书签功能实现
-    function getBookmarkKey() {
-        return 'bookmark_' + btoa(window.location.href);
-    }
-
-    function getCurrentScrollProgress() {
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-        return scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
-    }
-
-    function saveBookmark() {
-        const key = getBookmarkKey();
-        const bookmarkData = {
-            scrollPosition: window.pageYOffset,
-            progress: getCurrentScrollProgress(),
-            timestamp: new Date().toISOString(),
-            url: window.location.href,
-            fontSize: currentFontSize
-        };
-        console.log(`[saveBookmark] Preparing to save bookmark for key "${key}":`, bookmarkData);
-        try {
-            localStorage.setItem(key, JSON.stringify(bookmarkData));
-            console.log(`[saveBookmark] Bookmark saved successfully for key "${key}".`);
-
-            // 更新书签按钮状态
-            if (bookmarkBtn) {
-                bookmarkBtn.textContent = '🔖 已保存书签';
-                bookmarkBtn.style.backgroundColor = '#4CAF50';
-                setTimeout(() => {
-                    bookmarkBtn.textContent = '🔖 书签';
-                    bookmarkBtn.style.backgroundColor = '';
-                }, 2000);
-            }
-        } catch (e) {
-            console.error(`[saveBookmark] Error saving bookmark for key "${key}":`, e);
-        }
-    }
-
-    function loadBookmark() {
-        const key = getBookmarkKey();
-        const saved = localStorage.getItem(key);
-        console.log(`[loadBookmark] Attempting to load bookmark for key "${key}". Saved data:`, saved ? "Found" : "Not found");
-
-        if (saved) {
-            try {
-                const bookmarkData = JSON.parse(saved);
-                console.log('[loadBookmark] Parsed bookmark data:', bookmarkData);
-                console.log(`[loadBookmark] Current activeContentElement before timeout:`, activeContentElement);
-                console.log(`[loadBookmark] Document scrollHeight before timeout: ${document.documentElement.scrollHeight}`);
-
-
-                setTimeout(() => {
-                    console.log(`[loadBookmark internal] Executing setTimeout. Target scrollPosition: ${bookmarkData.scrollPosition}, Target fontSize: ${bookmarkData.fontSize}`);
-                    console.log(`[loadBookmark internal] activeContentElement inside timeout:`, activeContentElement);
-                    console.log(`[loadBookmark internal] Document scrollHeight inside timeout (before scroll): ${document.documentElement.scrollHeight}`);
-
-                    window.scrollTo(0, bookmarkData.scrollPosition);
-                    console.log(`[loadBookmark internal] Scrolled to: ${bookmarkData.scrollPosition}. Current window.pageYOffset: ${window.pageYOffset}`);
-
-                    if (bookmarkData.fontSize && currentFontSize !== bookmarkData.fontSize) {
-                        console.log(`[loadBookmark internal] Restoring font size from bookmark: ${bookmarkData.fontSize}. Current font size: ${currentFontSize}`);
-                        currentFontSize = bookmarkData.fontSize;
-                        if (activeContentElement) {
-                            applyCurrentSettingsToElement(activeContentElement);
-                            console.log(`[loadBookmark internal] Applied font size ${currentFontSize} to activeContentElement.`);
-                        } else {
-                            console.warn('[loadBookmark internal] activeContentElement is null, cannot apply bookmarked font size.');
-                        }
-                        saveSettings(); // Also save this newly applied font size as current setting
-                    } else if (bookmarkData.fontSize) {
-                        console.log(`[loadBookmark internal] Font size in bookmark (${bookmarkData.fontSize}) is same as current (${currentFontSize}). No change needed.`);
-                    }
-                }, 250); // 250ms delay
-                return true;
-            } catch (e) {
-                console.error(`[loadBookmark] Error loading or applying bookmark for key "${key}":`, e);
-                return false;
-            }
-        }
-        return false;
-    }
-
-    function hasBookmark() {
-        const key = getBookmarkKey();
-        const has = localStorage.getItem(key) !== null;
-        console.log(`[hasBookmark] Checking for key "${key}". Found: ${has}`);
-        return has;
-    }
-
-    // 书签按钮事件
-    if (bookmarkBtn) {
-        bookmarkBtn.addEventListener('click', function() {
-            if (hasBookmark()) {
-                if (!loadBookmark() && confirm('是否更新书签到当前位置？')) {
-                    saveBookmark();
-                }
-            } else {
-                saveBookmark();
-            }
-        });
-    }
-    if (bookmarkSaveBtn) bookmarkSaveBtn.addEventListener('click', saveBookmark);
-    
-    function updateProgress() { /* ... (existing updateProgress, adapted for chunking) ... */
+    function updateProgress() {
         let progress = 0;
         if (chunks.length > 0 && (contentType === 'txt' || contentType === 'markdown' || contentType === 'plain')) {
              progress = (currentChunkToRender / chunks.length) * 100;
-             if (currentChunkToRender === chunks.length && chunks.length > 0) progress = 100; // Ensure 100% when all loaded
-        } else {
+             if (currentChunkToRender === chunks.length && chunks.length > 0) progress = 100;
+        } else { // For non-chunked (EPUB, Code) or fully loaded chunked
             const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
             const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
             progress = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : (document.body.scrollHeight > 0 ? 100 : 0) ;
@@ -836,173 +482,386 @@ document.addEventListener('DOMContentLoaded', function() {
         if (progressFill) progressFill.style.width = `${progress}%`;
         if (progressText) progressText.textContent = `${Math.round(progress)}%`;
     }
+    window.updateProgress = updateProgress; // Expose globally
 
-    // 滚动处理函数
+    if (fontSmallerBtn && fontLargerBtn) {
+        fontSmallerBtn.addEventListener('click', () => {
+            console.log("[Reader] Font-smaller clicked. ACE:", activeContentElement, " CFS:", currentFontSize);
+            if (!activeContentElement) { console.error("Cannot change font: activeContentElement is null."); return; }
+            if (currentFontSize > 12) {
+                currentFontSize -= 2;
+                applyCurrentSettingsToElement(activeContentElement);
+                saveSettings();
+            }
+        });
+        fontLargerBtn.addEventListener('click', () => {
+            console.log("[Reader] Font-larger clicked. ACE:", activeContentElement, " CFS:", currentFontSize);
+            if (!activeContentElement) { console.error("Cannot change font: activeContentElement is null."); return; }
+            if (currentFontSize < 32) {
+                currentFontSize += 2;
+                applyCurrentSettingsToElement(activeContentElement);
+                saveSettings();
+            }
+        });
+    }
+
+    if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', function() {
+            if (document.fullscreenElement) { document.exitFullscreen(); }
+            else { document.documentElement.requestFullscreen(); }
+        });
+        document.addEventListener('fullscreenchange', function() {
+            console.log('[Reader] Fullscreen state changed. Is fullscreen:', !!document.fullscreenElement);
+            fullscreenBtn.textContent = document.fullscreenElement ? '🔲 退出全屏' : '🔳 浏览器全屏';
+            if (document.fullscreenElement) { document.body.classList.add('fullscreen-mode'); }
+            else { document.body.classList.remove('fullscreen-mode'); }
+        });
+    }
+
+    if (controlToggle && readerControls) {
+        controlToggle.addEventListener('click', function() {
+            isControlsCollapsed = !isControlsCollapsed;
+            readerControls.classList.toggle('collapsed', isControlsCollapsed);
+            controlToggle.textContent = isControlsCollapsed ? '⚙️ 展开设置' : '⚙️ 收起设置';
+            saveSettings(); // Save collapsed state
+        });
+    }
+
+    // Page Navigation (Buttons)
+    function setupPageNavigation() {
+        const pageUpButton = document.getElementById('page-up'); // Renamed for clarity
+        const pageDownButton = document.getElementById('page-down'); // Renamed for clarity
+        console.log('[Reader] Setting up page navigation. pageUpBtn:', pageUpButton, 'pageDownBtn:', pageDownButton);
+        if (pageUpButton) {
+            pageUpButton.removeEventListener('click', pageUpHandler); // Avoid double-binding
+            pageUpButton.addEventListener('click', pageUpHandler);
+            console.log('[Reader] Page up button event listener added.');
+        } else { console.warn('[Reader] Page up button not found!'); }
+        if (pageDownButton) {
+            pageDownButton.removeEventListener('click', pageDownHandler); // Avoid double-binding
+            pageDownButton.addEventListener('click', pageDownHandler);
+            console.log('[Reader] Page down button event listener added.');
+        } else { console.warn('[Reader] Page down button not found!'); }
+    }
+
+    function pageUpHandler(e) {
+        e.preventDefault(); console.log('[Reader] Page up clicked');
+        window.scrollBy({ top: -(window.innerHeight * 0.8), behavior: 'smooth' });
+    }
+    function pageDownHandler(e) {
+        e.preventDefault(); console.log('[Reader] Page down clicked');
+        window.scrollBy({ top: (window.innerHeight * 0.8), behavior: 'smooth' });
+    }
+
+    // Draggable Page Navigation
+    function setupDragNavigation() {
+        const pageNavElement = document.getElementById('page-navigation'); // Renamed for clarity
+        if (pageNavElement) {
+            // ... (setupDragNavigation logic remains largely the same, ensure it uses pageNavElement)
+            // For brevity, not repeating the whole function here, assume it's moved.
+            // Ensure button variables inside are correctly scoped or re-fetched if necessary.
+            let isDragging = false;
+            let dragOffset = { x: 0, y: 0 };
+            pageNavElement.addEventListener('mousedown', function(e) {
+                if (e.target === pageNavElement) {
+                    isDragging = true;
+                    const rect = pageNavElement.getBoundingClientRect();
+                    dragOffset.x = e.clientX - rect.left;
+                    dragOffset.y = e.clientY - rect.top;
+                    e.preventDefault(); // Prevent text selection while dragging
+                }
+            });
+            const pageUpButtonInDrag = document.getElementById('page-up'); // Re-fetch for this scope
+            const pageDownButtonInDrag = document.getElementById('page-down'); // Re-fetch
+            const bookmarkSaveButtonInDrag = document.getElementById('bookmark-save'); // Re-fetch
+
+            [pageUpButtonInDrag, pageDownButtonInDrag, bookmarkSaveButtonInDrag].forEach(btn => {
+                if (btn) btn.addEventListener('mousedown', e => e.stopPropagation());
+            });
+            document.addEventListener('mousemove', function(e) {
+                if (isDragging) {
+                    let x = e.clientX - dragOffset.x;
+                    let y = e.clientY - dragOffset.y;
+                    const maxX = window.innerWidth - pageNavElement.offsetWidth;
+                    const maxY = window.innerHeight - pageNavElement.offsetHeight;
+                    pageNavElement.style.right = 'auto'; // Clear right if previously set
+                    pageNavElement.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
+                    pageNavElement.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
+                    pageNavElement.style.transform = 'none'; // Clear transform if previously centered
+                }
+            });
+            document.addEventListener('mouseup', function() { isDragging = false; });
+        }
+    }
+
+    // Bookmarks
+    function getBookmarkKey() { return 'bookmark_' + btoa(window.location.href); }
+    function getCurrentScrollProgress() {
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        return scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+    }
+    function saveBookmark() {
+        const key = getBookmarkKey();
+        const bookmarkData = {
+            scrollPosition: window.pageYOffset, progress: getCurrentScrollProgress(),
+            timestamp: new Date().toISOString(), url: window.location.href, fontSize: currentFontSize
+        };
+        console.log(`[Reader][saveBookmark] Saving for key "${key}":`, bookmarkData);
+        try {
+            localStorage.setItem(key, JSON.stringify(bookmarkData));
+            console.log(`[Reader][saveBookmark] Success for key "${key}".`);
+            if (bookmarkBtn) { /* UI feedback */
+                bookmarkBtn.textContent = '🔖 已保存书签'; bookmarkBtn.style.backgroundColor = '#4CAF50';
+                setTimeout(() => { bookmarkBtn.textContent = '🔖 书签'; bookmarkBtn.style.backgroundColor = ''; }, 2000);
+            }
+        } catch (e) { console.error(`[Reader][saveBookmark] Error for key "${key}":`, e); }
+    }
+    function loadBookmark() {
+        const key = getBookmarkKey();
+        const saved = localStorage.getItem(key);
+        console.log(`[Reader][loadBookmark] Attempting for key "${key}". Found:`, !!saved);
+        if (saved) {
+            try {
+                const bookmarkData = JSON.parse(saved);
+                console.log('[Reader][loadBookmark] Parsed data:', bookmarkData);
+                console.log(`[Reader][loadBookmark] ACE before timeout:`, activeContentElement, `ScrollHeight: ${document.documentElement.scrollHeight}`);
+                setTimeout(() => {
+                    console.log(`[Reader][loadBookmark internal] Timeout. Scroll: ${bookmarkData.scrollPosition}, Font: ${bookmarkData.fontSize}`);
+                    console.log(`[Reader][loadBookmark internal] ACE in timeout:`, activeContentElement, `ScrollHeight: ${document.documentElement.scrollHeight}`);
+                    window.scrollTo(0, bookmarkData.scrollPosition);
+                    console.log(`[Reader][loadBookmark internal] Scrolled to: ${window.pageYOffset}`);
+                    if (bookmarkData.fontSize && currentFontSize !== bookmarkData.fontSize) {
+                        console.log(`[Reader][loadBookmark internal] Restoring font: ${bookmarkData.fontSize}`);
+                        currentFontSize = bookmarkData.fontSize;
+                        if (activeContentElement) applyCurrentSettingsToElement(activeContentElement);
+                        else console.warn('[Reader][loadBookmark internal] ACE null, cannot apply font.');
+                        saveSettings();
+                    }
+                }, 250);
+                return true;
+            } catch (e) { console.error(`[Reader][loadBookmark] Error for key "${key}":`, e); return false; }
+        }
+        return false;
+    }
+    function hasBookmark() {
+        const key = getBookmarkKey();
+        const has = localStorage.getItem(key) !== null;
+        console.log(`[Reader][hasBookmark] Key "${key}". Found: ${has}`);
+        return has;
+    }
+    if (bookmarkBtn) {
+        bookmarkBtn.addEventListener('click', function() {
+            if (hasBookmark()) { if (!loadBookmark() && confirm('是否更新书签到当前位置？')) saveBookmark(); }
+            else { saveBookmark(); }
+        });
+    }
+    if (bookmarkSaveBtn) bookmarkSaveBtn.addEventListener('click', saveBookmark);
+
+    // Scroll Handling & Throttling
     function handleScroll() {
         updateProgress();
-
-        // 检查是否需要加载更多内容块（仅对分块内容类型）
         if (chunks.length > currentChunkToRender && (contentType === 'txt' || contentType === 'markdown' || contentType === 'plain')) {
             const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
             const scrollHeight = document.documentElement.scrollHeight;
             const clientHeight = document.documentElement.clientHeight;
-
-            // 当滚动到接近底部时加载下一块内容
-            if (scrollTop + clientHeight >= scrollHeight - SCROLL_THRESHOLD) {
-                renderNextChunk();
-            }
+            if (scrollTop + clientHeight >= scrollHeight - SCROLL_THRESHOLD) renderNextChunk();
         }
     }
+    const throttledScrollHandler = throttle(handleScroll, 100); // throttle is defined below
+    window.addEventListener('scroll', throttledScrollHandler);
 
-    // 节流的滚动处理器
-    const throttledScrollHandler = throttle(handleScroll, 100);
-    
-    window.addEventListener('scroll', throttledScrollHandler); // Combined scroll handler
-    document.addEventListener('keydown', function(e) { /* ... existing keydown logic ... */
-        if (e.ctrlKey && e.key === 'ArrowUp') {
-            e.preventDefault();
-            if(fontLargerBtn) fontLargerBtn.click();
-        }
-        else if (e.ctrlKey && e.key === 'ArrowDown') {
-            e.preventDefault();
-            if(fontSmallerBtn) fontSmallerBtn.click();
-        }
-        else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-            e.preventDefault();
-            console.log('Keyboard page up triggered'); // 调试日志
-            window.scrollBy({ top: -(window.innerHeight * 0.8), behavior: 'smooth' });
-        }
-        else if (e.key === 'ArrowRight' || e.key === 'PageDown') {
-            e.preventDefault();
-            console.log('Keyboard page down triggered'); // 调试日志
-            window.scrollBy({ top: (window.innerHeight * 0.8), behavior: 'smooth' });
-        }
-        else if (e.key === 'Home') {
-            window.scrollTo(0, 0);
-            e.preventDefault();
-        }
-        else if (e.key === 'End') {
-            window.scrollTo(0, document.body.scrollHeight);
-            e.preventDefault();
-        }
-        else if (e.ctrlKey && e.key === 'f') {
-            e.preventDefault();
-            if(fullscreenBtn) fullscreenBtn.click();
-        }
-        // Help panel toggle
+    // Keyboard Shortcuts
+    let helpVisible = false; // Moved helpVisible here to be within scope
+    document.addEventListener('keydown', function(e) {
+        // Target for inputs, textareas, contenteditables should not trigger shortcuts
+        if (e.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+
+        if (e.ctrlKey && e.key === 'ArrowUp') { e.preventDefault(); if(fontLargerBtn) fontLargerBtn.click(); }
+        else if (e.ctrlKey && e.key === 'ArrowDown') { e.preventDefault(); if(fontSmallerBtn) fontSmallerBtn.click(); }
+        else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); console.log('[Reader] Keyboard page up'); window.scrollBy({ top: -(window.innerHeight * 0.8), behavior: 'smooth' }); }
+        else if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); console.log('[Reader] Keyboard page down'); window.scrollBy({ top: (window.innerHeight * 0.8), behavior: 'smooth' }); }
+        else if (e.key === 'Home') { e.preventDefault(); window.scrollTo(0, 0); }
+        else if (e.key === 'End') { e.preventDefault(); window.scrollTo(0, document.body.scrollHeight); }
+        else if (e.ctrlKey && e.key === 'f') { e.preventDefault(); if(fullscreenBtn) fullscreenBtn.click(); }
         if (e.key === 'F1' || (e.key === '?' && e.shiftKey)) {
             e.preventDefault();
             helpVisible = !helpVisible;
-            document.getElementById('help-panel').style.display = helpVisible ? 'block' : 'none';
+            const helpPanel = document.getElementById('help-panel');
+            if (helpPanel) helpPanel.style.display = helpVisible ? 'block' : 'none';
         }
     });
 
-    function saveSettings() { /* ... existing saveSettings ... */
+    // Settings Persistence
+    function saveSettings() {
         localStorage.setItem('readerSettings', JSON.stringify({ fontSize: currentFontSize, controlsCollapsed: isControlsCollapsed }));
+        console.log("[Reader] Settings saved:", { fontSize: currentFontSize, controlsCollapsed: isControlsCollapsed });
     }
     function loadSettings() {
         const saved = localStorage.getItem('readerSettings');
-        console.log("loadSettings called. current activeContentElement:", activeContentElement, "contentType:", contentType);
+        console.log("[Reader] loadSettings called. ACE:", activeContentElement, "CT:", contentType);
         if (saved) {
             try {
                 const settings = JSON.parse(saved);
                 currentFontSize = settings.fontSize || 18;
-                isControlsCollapsed = settings.controlsCollapsed || false;
-                console.log("Loaded settings: fontSize =", currentFontSize, "controlsCollapsed =", isControlsCollapsed);
-                if (activeContentElement) {
-                    applyCurrentSettingsToElement(activeContentElement);
-                } else {
-                    console.warn("loadSettings: activeContentElement is null, cannot apply font size yet.");
-                }
+                isControlsCollapsed = settings.controlsCollapsed || false; // Load collapsed state
+                console.log("[Reader] Loaded settings:", settings);
+                if (activeContentElement) applyCurrentSettingsToElement(activeContentElement);
+                else console.warn("[Reader] loadSettings: ACE null, cannot apply font yet.");
+                // Apply controls collapsed state
                 if (readerControls && controlToggle) {
                     readerControls.classList.toggle('collapsed', isControlsCollapsed);
                     controlToggle.textContent = isControlsCollapsed ? '⚙️ 展开设置' : '⚙️ 收起设置';
                 }
-            } catch (e) { console.error('Error loading reader settings:', e); }
+            } catch (e) { console.error('[Reader] Error loading settings:', e); }
         } else {
-            console.log("No saved settings found, applying default font size.");
-            if (activeContentElement) {
-                applyCurrentSettingsToElement(activeContentElement); // Apply default
-            } else {
-                console.warn("loadSettings: activeContentElement is null, cannot apply default font size yet.");
-            }
+            console.log("[Reader] No saved settings, applying default font.");
+            if (activeContentElement) applyCurrentSettingsToElement(activeContentElement); // Apply default
+            else console.warn("[Reader] loadSettings: ACE null, cannot apply default font yet.");
         }
     }
-    function saveReadingPosition() { /* ... existing saveReadingPosition ... */
-         localStorage.setItem('readingPosition_' + btoa(window.location.href), window.pageYOffset);
-    }
-    function restoreReadingPosition() { /* ... existing restoreReadingPosition ... */
-        const saved = localStorage.getItem('readingPosition_' + btoa(window.location.href));
-        if (saved) setTimeout(() => window.scrollTo(0, parseInt(saved)), 150); // increased delay for chunked content
+    function saveReadingPosition() { localStorage.setItem('readingPosition_' + btoa(window.location.href), window.pageYOffset); }
+    function restoreReadingPosition() {
+        const savedPos = localStorage.getItem('readingPosition_' + btoa(window.location.href));
+        if (savedPos) setTimeout(() => window.scrollTo(0, parseInt(savedPos)), 150);
     }
     window.addEventListener('beforeunload', saveReadingPosition);
 
-    loadSettings();
+    // Initial Setup Calls
+    loadSettings(); // Load settings first, which includes applying font size
 
-    // 根据内容类型决定初始化流程
-    if (contentType === 'epub') {
-        // EPUB内容的特殊处理
-        setTimeout(() => {
-            if (hasBookmark()) {
-                loadBookmark();
-            } else {
-                restoreReadingPosition();
-            }
-            updateProgress();
-            applyAnnotationsToRenderedContent();
-        }, 200);
-    } else if (! (contentType === 'txt' || contentType === 'markdown' || contentType === 'plain') || chunks.length <= INITIAL_CHUNKS_TO_LOAD) {
-        setTimeout(() => { if (hasBookmark()) loadBookmark(); else restoreReadingPosition(); updateProgress(); applyAnnotationsToRenderedContent(); }, 200);
-    } else {
-         setTimeout(() => { updateProgress(); }, 100);
-         if (hasBookmark()) loadBookmark(); else restoreReadingPosition();
-         // Annotations for chunked content will be (re)applied as chunks load or fully at the end by renderNextChunk
-    }
-
-    // Help Panel
-    const helpText = document.createElement('div'); /* ... existing help panel HTML ... */
-    helpText.innerHTML = `<div style="position: fixed; bottom: 10px; right: 10px; background: #fff; border: 2px solid #000; padding: 10px; font-size: 12px; display: none; z-index: 10001;" id="help-panel"><strong>快捷键:</strong><br>Ctrl+↑/↓: 调整字体<br>Ctrl+F: 浏览器全屏<br>←/→/PageUp/PageDown: 翻页<br>Home/End: 跳转首尾<br>F1 or Shift+?: 显示/隐藏帮助<br><br><strong>操作:</strong><br>翻页按钮可拖动<br>工具栏可收起<br>🔖书签: 保存/跳转位置<br>💾: 快速保存书签</div>`;
-    document.body.appendChild(helpText);
-    let helpVisible = false; // Already declared by keydown listener for F1
-
-    if (activeContentElement) {
-        applyCurrentSettingsToElement(activeContentElement);
-        console.log("Applied initial font settings in DOMContentLoaded if activeContentElement was present.");
-    } else {
-        console.warn("DOMContentLoaded: activeContentElement is null at the end of initial setup, font size might not be applied until it's set by templates.");
-    }
-    createSelectionToolbar(); // Create the toolbar so it's ready
-
-    // 延迟重新设置翻页按钮，确保所有模板都已完全加载
-    setTimeout(function() {
-        // Update activeContentElement reference here if it might have been set by templates after initial JS load
-        if (!activeContentElement && window.activeContentElement) {
-            activeContentElement = window.activeContentElement;
-            console.log('Updated activeContentElement in setTimeout:', activeContentElement);
-            // If it was null before and now set, apply font settings
-            if(activeContentElement && !localStorage.getItem('readerSettings')) { // Apply only if no saved settings, to avoid overriding user's last session
-                 applyCurrentSettingsToElement(activeContentElement);
-                 console.log("Applied font settings in setTimeout as activeContentElement was just found.");
-            } else if (activeContentElement && localStorage.getItem('readerSettings')) {
-                // If settings were loaded but ACE was null, re-apply
-                console.log("Re-applying font settings in setTimeout as activeContentElement is now available.");
-                loadSettings(); // This will call applyCurrentSettingsToElement
-            }
+    // Content Initialization (Chunking or Direct)
+    if (contentType === 'txt' || contentType === 'markdown' || contentType === 'plain') {
+        chunkContent(); // Prepare chunks
+        if (contentContainer) contentContainer.innerHTML = ''; // Clear container for new chunks
+        let loadedInitial = 0;
+        for (let i = 0; i < INITIAL_CHUNKS_TO_LOAD && loadedInitial < chunks.length; i++) {
+            if(renderNextChunk()) loadedInitial++;
         }
-        console.log('Final DOM elements check in setTimeout:');
-        console.log('page-navigation:', document.getElementById('page-navigation'));
-        console.log('page-up:', document.getElementById('page-up'));
-        console.log('page-down:', document.getElementById('page-down'));
-        console.log('Final activeContentElement in setTimeout:', activeContentElement);
-        console.log('Final contentType in setTimeout:', contentType || window.contentType);
+        if (chunks.length > loadedInitial) { // If more chunks remain
+            // Scroll listener is already added globally, will call renderNextChunk
+        } else { // All chunks loaded initially
+            applyAnnotationsToRenderedContent();
+            updateProgress(); // Update progress after all initial chunks are rendered
+        }
+    } else if (contentType === 'epub') {
+        // EPUB content is already in #epub-content (activeContentElement)
+        // Font settings are applied by loadSettings -> applyCurrentSettingsToElement
+        // Annotations and progress are handled by the specific epub timeout further down.
+    } else { // For 'code' or other direct content types not requiring chunking
+        applyAnnotationsToRenderedContent();
+        updateProgress();
+    }
 
-        setupPageNavigation();
-        setupDragNavigation();
-        console.log('Page navigation and drag functionality re-initialized in setTimeout');
-    }, 100); // This timeout might be critical for when activeContentElement is set by HTML templates
+    // General Initialization Sequence (after content structure is somewhat ready)
+    // For EPUB, a specific timeout handles this. For others, it's here.
+    if (contentType !== 'epub') {
+        setTimeout(() => {
+            if (hasBookmark()) loadBookmark();
+            else restoreReadingPosition();
+            updateProgress(); // Initial progress update
+            applyAnnotationsToRenderedContent(); // Apply annotations after potential scroll
+        }, 200); // Delay to allow rendering and scroll position restoration
+    } else { // EPUB specific timing from original code
+         setTimeout(() => {
+            if (hasBookmark()) loadBookmark(); else restoreReadingPosition();
+            updateProgress(); applyAnnotationsToRenderedContent();
+        }, 200); // This was 200 in original, ensure it's after activeContentElement is set
+    }
+
+    // Help Panel (ensure it's created)
+    const helpPanelExists = document.getElementById('help-panel');
+    if (!helpPanelExists) {
+        const helpTextDiv = document.createElement('div');
+        helpTextDiv.innerHTML = `<div style="position: fixed; bottom: 10px; right: 10px; background: #fff; border: 2px solid #000; padding: 10px; font-size: 12px; display: none; z-index: 10001;" id="help-panel"><strong>快捷键:</strong><br>Ctrl+↑/↓: 调整字体<br>Ctrl+F: 浏览器全屏<br>←/→/PageUp/PageDown: 翻页<br>Home/End: 跳转首尾<br>F1 or Shift+?: 显示/隐藏帮助<br><br><strong>操作:</strong><br>翻页按钮可拖动<br>工具栏可收起<br>🔖书签: 保存/跳转位置<br>💾: 快速保存书签</div>`;
+        document.body.appendChild(helpTextDiv.firstChild); // Append the actual div, not the container
+    }
+
+
+    if (activeContentElement) { //This was already called by loadSettings if ACE was available
+        // applyCurrentSettingsToElement(activeContentElement);
+        console.log("[Reader] Font settings were applied via loadSettings if activeContentElement was present.");
+    } else {
+        console.warn("[Reader] activeContentElement is null at end of init. Font size might not be correctly applied if not set by template scripts earlier.");
+    }
+
+    createSelectionToolbar(); // Ensure toolbar is ready
+
+    // Final setup for navigation, potentially after all content (including EPUB specific) is more settled
+    // This replaces the old final setTimeout
+    setTimeout(function() {
+        console.log('[Reader] Final DOM checks and re-init for navigation (100ms post-init).');
+        // No need to re-check activeContentElement here as initializeReaderFeatures only runs if it's set.
+        // But ensure it's the latest from window if it could have changed by other scripts (unlikely here)
+        if (window.activeContentElement && activeContentElement !== window.activeContentElement) {
+             console.warn("[Reader] window.activeContentElement changed post-initialization. This is unexpected.");
+             activeContentElement = window.activeContentElement; // Re-align
+             // Potentially re-apply settings if this happens, though it indicates a deeper issue.
+             // loadSettings();
+        }
+
+        console.log('[Reader] Page Nav elements check: NavContainer:', document.getElementById('page-navigation'), 'Up:', document.getElementById('page-up'), 'Down:', document.getElementById('page-down'));
+        console.log('[Reader] Final activeContentElement in setTimeout:', activeContentElement);
+        console.log('[Reader] Final contentType in setTimeout:', contentType);
+
+        setupPageNavigation(); // Re-run to ensure listeners are on correct, potentially dynamic elements
+        setupDragNavigation(); // Same for drag functionality
+        console.log('[Reader] Page navigation and drag re-initialized.');
+    }, 100); // A small delay as before, for things to settle.
+}
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("[Reader] DOM fully loaded and parsed. Starting reader.js setup polling...");
+
+    let pollInterval;
+    let attempts = 0;
+    const maxAttempts = 50; // 50 * 100ms = 5 seconds
+
+    function checkGlobalsAndInit() {
+        attempts++;
+        // console.log(`[Reader] Polling for global vars... Attempt ${attempts}`); // Can be too verbose
+        if (window.activeContentElement && window.contentType) {
+            console.log(`[Reader] Polling SUCCESS: Found window.activeContentElement and window.contentType after ${attempts} attempts.`);
+            clearInterval(pollInterval);
+            initializeReaderFeatures();
+        } else if (attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            console.error("[Reader] ERROR: Timed out waiting for window.activeContentElement and window.contentType to be set by the template.");
+            // Fallback: Try to initialize with whatever is available, or show error.
+            // For now, we'll attempt to initialize, but it might fail if elements are missing.
+            if (!window.activeContentElement) {
+                 // Try to find a default content container as a last resort
+                 window.activeContentElement = document.getElementById('content-container') || document.getElementById('epub-content') || document.body;
+                 console.warn("[Reader] window.activeContentElement was not set by template, falling back to generic element:", window.activeContentElement);
+            }
+            if (!window.contentType) {
+                // Try to infer content type, or default to 'plain'
+                const contentEl = window.activeContentElement;
+                if (contentEl && contentEl.id === 'epub-content') window.contentType = 'epub';
+                else if (contentEl && contentEl.classList && contentEl.classList.contains('markdown-content')) window.contentType = 'markdown';
+                else if (contentEl && contentEl.classList && contentEl.classList.contains('txt-content')) window.contentType = 'txt';
+                else window.contentType = 'plain'; // Default fallback
+                console.warn("[Reader] window.contentType was not set by template, falling back to:", window.contentType);
+            }
+            initializeReaderFeatures(); // Attempt to initialize even on timeout, with fallbacks.
+        }
+    }
+
+    // Check immediately in case they are already set by a script loaded before this one in the template
+    if (window.activeContentElement && window.contentType) {
+        console.log("[Reader] Globals (window.activeContentElement & window.contentType) already set on DOMContentLoaded.");
+        initializeReaderFeatures();
+    } else {
+        console.log("[Reader] Starting polling for window.activeContentElement and window.contentType.");
+        pollInterval = setInterval(checkGlobalsAndInit, 100); // Poll every 100ms
+    }
 });
 
-function throttle(func, limit) { /* ... existing throttle ... */
+// throttle function should be outside DOMContentLoaded to be globally available if needed,
+// or defined within initializeReaderFeatures if only used there.
+// For now, keep it global as it was.
+function throttle(func, limit) {
     let inThrottle;
     return function() {
         const args = arguments;
